@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { auth, db, googleProvider } from './firebase'
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore'
@@ -12,7 +12,7 @@ function App() {
     const [deferredPrompt, setDeferredPrompt] = useState(null)
     const [showInstallBtn, setShowInstallBtn] = useState(false)
     const [isListening, setIsListening] = useState(false)
-    const recognitionRef = React.useRef(null)
+    const recognitionRef = useRef(null)
     
     // 모달 상태 관리
     const [exportModalTodo, setExportModalTodo] = useState(null)

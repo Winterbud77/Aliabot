@@ -1,5 +1,5 @@
 // Service Worker with icons in cache
-const CACHE_NAME = 'todo-cache-v2';
+const CACHE_NAME = 'todo-cache-v3';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -17,9 +17,12 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    // HTML 페이지 등은 항상 네트워크를 먼저 확인하여 최신 버전인지 체크 (Network First)
+    // 오프라인이거나 에러가 났을 때만 캐시를 사용
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => response || fetch(event.request))
+        fetch(event.request).catch(() => {
+            return caches.match(event.request);
+        })
     );
 });
 

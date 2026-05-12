@@ -16,8 +16,17 @@ function App() {
     
     // 모달 상태 관리
     const [exportModalTodo, setExportModalTodo] = useState(null)
+    const [showSettingsModal, setShowSettingsModal] = useState(false)
 
-    // 1. Authentication Listener & Data Migration
+    // API Keys (BYOK)
+    const [apiKeys, setApiKeys] = useState(() => {
+        const savedKeys = localStorage.getItem('alia-bot-api-keys')
+        return savedKeys ? JSON.parse(savedKeys) : { openai: '', gemini: '', notion: '' }
+    })
+
+    useEffect(() => {
+        localStorage.setItem('alia-bot-api-keys', JSON.stringify(apiKeys))
+    }, [apiKeys])
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser)
@@ -271,13 +280,22 @@ function App() {
                 <h1>AliaBot <span style={{fontSize: '0.4em', color: '#888'}}>v2.1</span></h1>
                 <div className="header-actions">
                     {user && (
-                        <button 
-                            className="btn-admin-db" 
-                            onClick={() => window.open('https://console.firebase.google.com/project/react-todo-d3fcc/firestore', '_blank')}
-                            title="Firebase 데이터베이스 관리자"
-                        >
-                            🗄️ DB
-                        </button>
+                        <>
+                            <button 
+                                className="btn-settings" 
+                                onClick={() => setShowSettingsModal(true)}
+                                title="설정 (API 키 연동)"
+                            >
+                                ⚙️
+                            </button>
+                            <button 
+                                className="btn-admin-db" 
+                                onClick={() => window.open('https://console.firebase.google.com/project/react-todo-d3fcc/firestore', '_blank')}
+                                title="Firebase 데이터베이스 관리자"
+                            >
+                                🗄️ DB
+                            </button>
+                        </>
                     )}
                     {showInstallBtn && (
                         <button className="btn-install" onClick={handleInstallClick}>
@@ -318,6 +336,50 @@ function App() {
                     추가
                 </button>
             </div>
+
+            {/* --- Settings Modal (BYOK) --- */}
+            {showSettingsModal && (
+                <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3>⚙️ Conductor 설정</h3>
+                        <p className="modal-description">지휘자의 능력을 향상시키기 위해 개인 API 키를 등록해주세요. (로컬에만 안전하게 저장됩니다)</p>
+                        
+                        <div className="settings-group">
+                            <label>OpenAI API Key (Whisper/GPT)</label>
+                            <input 
+                                type="password" 
+                                placeholder="sk-..." 
+                                value={apiKeys.openai}
+                                onChange={e => setApiKeys({...apiKeys, openai: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Gemini API Key (Parsing/Summary)</label>
+                            <input 
+                                type="password" 
+                                placeholder="AIza..." 
+                                value={apiKeys.gemini}
+                                onChange={e => setApiKeys({...apiKeys, gemini: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Notion API Token (Connect to Note)</label>
+                            <input 
+                                type="password" 
+                                placeholder="secret_..." 
+                                value={apiKeys.notion}
+                                onChange={e => setApiKeys({...apiKeys, notion: e.target.value})}
+                            />
+                        </div>
+
+                        <button className="btn-primary-action" onClick={() => setShowSettingsModal(false)}>
+                            저장 및 닫기
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <ul className="todo-list">
                 {todos.map((todo, index) => (

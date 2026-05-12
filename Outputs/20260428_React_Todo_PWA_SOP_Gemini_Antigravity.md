@@ -69,5 +69,31 @@ node copy_icons.js
 2. 브라우저 창을 띄우고 **강력 새로고침(`Ctrl` + `F5`)**을 누릅니다.
 3. 약 5~10초 정도 기다리면 PWA 서비스 워커가 아이콘을 백그라운드에서 다운로드하여 인식하고, 주소창에 앱 설치 아이콘이 정상적으로 활성화됩니다.
 
+---
+
 ### 📌 향후 주의 사항
 - Windows PowerShell 환경에서는 `&&` 같은 명령어 연결자나 단순 `copy` 명령어가 예기치 않게 실패하는 경우가 많습니다. 다중 파일 처리나 시스템 간 복사 시 Node.js 환경의 파일 시스템 모듈(`fs`)을 스크립트로 작성하여 사용하는 것이 가장 우회하기 좋고 확실한 방법입니다.
+
+---
+
+## 🤖 Step 4. [Conductor] 다중 AI 모델 및 세션 협업 가이드
+
+Antigravity 인터페이스 내에서 여러 AI 모델(Gemini, ChatGPT, Claude)을 활용하여 복합적인 기능을 개발할 때 지켜야 할 표준 운영 절차입니다.
+
+### 1. 모델 전환 및 세션 관리 (Session Management)
+- **단일 세션 내 모델 전환:** 한 대화창 안에서 모델만 바꾸는 경우, Antigravity가 이전 대화 로그(`overview.txt`)를 새 모델에게 자동 주입하므로 맥락(Context)이 유지됩니다. (Master 브랜치 권장)
+- **대화창(Session) 분리:** 주제별로 새로운 대화창을 생성하면, 각 세션의 대화 내용은 완벽하게 격리되지만 물리적 파일은 공유됩니다. (기능별 브랜치 필수)
+
+### 2. 브랜치 전략 (Branching Strategy)
+- **기능별 브랜치 할당:** 
+  - 세션 A (Claude 담당) -> `feature-logic` 브랜치
+  - 세션 B (ChatGPT 담당) -> `feature-ui` 브랜치
+- **병합 및 통합:** 각 브랜치에서 작업 완료 후 Master 브랜치로 Merge하며, 최종 검토는 가장 고성능 모델(Pro High 등)을 사용하여 코드 충돌을 해결합니다.
+
+### 3. 지식 공유 표준 (Knowledge Synchronization)
+- 세션 간 대화는 단절되어 있으므로, 반드시 **Implementation Plan**과 **Walkthrough** 문서를 최신 상태로 유지하여 다른 세션의 모델이 현재 프로젝트의 '물리적 상태'를 이해하게 해야 합니다.
+
+---
+
+**최종 작성자:** AliaBot Conductor (Gemini Antigravity)  
+**업데이트 일자:** 2026-05-12

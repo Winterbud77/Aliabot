@@ -4,6 +4,7 @@ import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore'
 import { parseCommand } from './utils/parser'
 import { sendToObsidian } from './api/obsidian'
+import { analyzeWithGemini } from './api/gemini'
 
 function App() {
     const [user, setUser] = useState(null)
@@ -137,14 +138,39 @@ function App() {
             // 입력값을 파서(Parser)를 통해 분석
             const { cleanedText, category, metadata } = parseCommand(inputValue);
 
-            await addDoc(collection(db, `users/${user.uid}/todos`), {
+            // 1. Firestore에 즉시 저장 (AI 분석 전, 빠른 UX 보장)
+            const docRef = await addDoc(collection(db, `users/${user.uid}/todos`), {
                 text: cleanedText,
                 category: category,
                 metadata: metadata || {},
                 completed: false,
+                tags: [],          // Phase 5.2: AI 태그 (초기값 빈 배열)
+                summary: '',       // Phase 5.2: AI 한 줄 요약 (초기값 빈 문자열)
+                aiProcessed: false, // Phase 5.2: AI 분석 완료 여부
                 createdAt: serverTimestamp()
             })
             setInputValue('')
+
+            // 2. Gemini API 키가 있을 때만 백그라운드에서 AI 분석 실행
+            if (apiKeys.gemini) {
+                analyzeWithGemini(cleanedText, apiKeys.gemini)
+                    .then(async (result) => {
+                        if (result) {
+                            await updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
+                                tags: result.tags || [],
+                                summary: result.summary || '',
+                                aiProcessed: true
+                            })
+                        }
+                    })
+                    .catch(err => {
+                        console.warn('Gemini 분석 실패 (API 키를 확인해주세요):', err.message)
+                        // 실패해도 aiProcessed를 true로 표시하여 무한 로딩 스피너 방지
+                        updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
+                            aiProcessed: true
+                        }).catch(() => {})
+                    })
+            }
         } catch (error) {
             console.error("Error adding todo:", error)
         }
@@ -196,8 +222,8 @@ function App() {
         
         const recognition = new SpeechRecognition();
         recognition.lang = 'ko-KR';
-        // continuous를 true로 설정하여 말이 잠깐 끊겨도 계속 듣게 만듭니다.
-        recognition.continuous = true; 
+        // [버그 수정] continuous: false → 발화 1회 후 자동 종료하여 '추가' 버튼 클릭 충돌 방지
+        recognition.continuous = false;
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
@@ -397,15 +423,33 @@ function App() {
                             </label>
                             
                             <div className="todo-content">
-                                {/* 카테고리 뱃지 */}
-                                {todo.category && todo.category !== 'todo' && (
-                                    <span className={`badge badge-${todo.category}`}>
-                                        {todo.category === 'calendar' ? '📅 캘린더' : '📝 메모'}
+                                {/* 메인 행: 카테고리 뱃지 + 텍스트 */}
+                                <div className="todo-main-row">
+                                    {todo.category && todo.category !== 'todo' && (
+                                        <span className={`badge badge-${todo.category}`}>
+                                            {todo.category === 'calendar' ? '📅 캘린더' : '📝 메모'}
+                                        </span>
+                                    )}
+                                    <span className="todo-text" onClick={() => user && toggleTodo(todo)}>
+                                        {todo.text}
                                     </span>
+                                </div>
+                                {/* Phase 5.2: AI 분석 중 인디케이터 */}
+                                {todo.aiProcessed === false && apiKeys.gemini && (
+                                    <span className="ai-processing">✨ AI 분석 중...</span>
                                 )}
-                                <span className="todo-text" onClick={() => user && toggleTodo(todo)}>
-                                    {todo.text}
-                                </span>
+                                {/* Phase 5.2: AI 한 줄 요약 */}
+                                {todo.summary && (
+                                    <p className="todo-summary">{todo.summary}</p>
+                                )}
+                                {/* Phase 5.2: AI 태그 칩 */}
+                                {todo.tags && todo.tags.length > 0 && (
+                                    <div className="todo-tags">
+                                        {todo.tags.map(tag => (
+                                            <span key={tag} className="tag-chip">#{tag}</span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         {user && (

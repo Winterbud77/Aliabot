@@ -38,6 +38,7 @@ function App() {
     const [exportActionType, setExportActionType] = useState('copy') // 'copy' | 'move'
     const [showSettingsModal, setShowSettingsModal] = useState(false)
     const [showPwaHelpModal, setShowPwaHelpModal] = useState(false)
+    const [showUserManualModal, setShowUserManualModal] = useState(false)
     const [showPwaBanner, setShowPwaBanner] = useState(() => {
         return shouldShowPwaInstallHint() && !isPwaBannerDismissed()
     })
@@ -241,6 +242,34 @@ function App() {
         console.log(`User response to the install prompt: ${outcome}`);
         setDeferredPrompt(null);
         setShowInstallBtn(false);
+    };
+
+    const copyUserManualToClipboard = () => {
+        const text = `[AliaBot 사용 설명서]
+1. 앱으로 다운받기 (PWA 설치)
+- 크롬 주소창 우측의 '설치/다운로드' 버튼을 누르면 바탕화면에 앱으로 설치됩니다.
+- 만약 "App에서 열기"만 뜨고 다운로드가 안 된다면, 크롬 주소창에 chrome://apps 를 입력하거나 Windows 설정 > 앱 > 설치된 앱에서 기존 AliaBot을 검색하여 완전히 '제거'한 다음 재접속해 보세요.
+
+2. 빠른 메모 및 음성 입력
+- 입력창에 텍스트를 적은 후 Enter를 치거나 '추가' 버튼을 누르면 메모가 등록됩니다.
+- 🎤(마이크) 버튼을 누르면 연속적인 음성 받아쓰기가 작동합니다. 말을 마친 후 다시 클릭하면 입력이 완료됩니다.
+
+3. 카테고리 자동 지정 (! 명령어)
+- 메모 작성 시 맨 앞에 !단어 를 적으면 카테고리가 강제 지정됩니다.
+  예) "!일정 오후 3시 회의" ➡️ 캘린더 카테고리
+  예) "!노션 중요 소스 정리" ➡️ Notion 카테고리
+  예) "!옵시디언 SOP 검토" ➡️ Obsidian 카테고리
+
+4. AI 자동 태깅 및 요약
+- 메모를 입력하면 AI가 내용을 실시간 분석하여 관련된 태그(#Priva 등)와 한 줄 요약(Summary)을 자동으로 생성합니다.
+- 태그를 클릭하면 해당 필터의 메모들만 모아볼 수 있습니다.
+
+5. 외부 전송 (Notion, Obsidian, Clipboard)
+- 등록된 메모 우측의 📤(내보내기) 아이콘을 눌러 Obsidian, Notion 등으로 동시 전송할 수 있습니다.
+- 설정(⚙️) 메뉴에서 본인의 Notion API 키와 데이터베이스 ID를 등록해 연동할 수 있습니다.`;
+        navigator.clipboard.writeText(text)
+            .then(() => alert('📋 사용 설명서가 클립보드에 복사되었습니다! 지인들에게 카톡이나 메일로 공유해 보세요.'))
+            .catch(() => alert('클립보드 복사에 실패했습니다.'));
     };
 
     // Auth Actions
@@ -661,6 +690,14 @@ function App() {
             <div className="app-header">
                 <h1>AliaBot <span style={{fontSize: '0.4em', color: '#888'}}>v2.1</span></h1>
                 <div className="header-actions">
+                    <button
+                        className="btn-user-manual"
+                        onClick={() => setShowUserManualModal(true)}
+                        title="AliaBot 사용 설명서"
+                        type="button"
+                    >
+                        📖 가이드
+                    </button>
                     {shouldShowPwaInstallHint() && (
                         <button
                             className="btn-pwa-help"
@@ -984,6 +1021,77 @@ function App() {
                         <button className="btn-primary-action" onClick={() => setShowPwaHelpModal(false)}>
                             확인
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* 사용 설명서 모달 */}
+            {showUserManualModal && (
+                <div className="modal-overlay" onClick={() => setShowUserManualModal(false)}>
+                    <div className="modal-content user-manual-modal" onClick={e => e.stopPropagation()}>
+                        <h3>📖 AliaBot 사용 설명서</h3>
+                        <p className="modal-description">
+                            AliaBot을 처음 접하는 지인분들을 위한 간단한 사용 가이드입니다.
+                        </p>
+                        
+                        <div className="manual-scroll-area">
+                            <div className="manual-section">
+                                <h4>1. 앱으로 다운받기 (바탕화면 PWA 설치)</h4>
+                                <ul>
+                                    <li><b>설치 방법:</b> 브라우저(크롬 등) 주소창 우측 끝에 나타나는 <b>'설치' 또는 모니터+화살표(다운로드) 아이콘</b>을 누르면 바탕화면에 바로가기 앱이 설치됩니다.</li>
+                                    <li>
+                                        <b style={{color: '#ff6b6b'}}>🚨 앱 설치 에러 해결법:</b> 만약 "App에서 열기"만 뜨고 설치가 안 된다면, 기존 구버전 앱이 컴퓨터에 꼬여서 남아있기 때문입니다. 
+                                        주소창에 <code style={{background: '#eee', padding: '2px 4px', borderRadius: '4px'}}>chrome://apps</code>를 입력하여 접속하거나, 윈도우 <b>[설정 ➡️ 앱 ➡️ 설치된 앱]</b>으로 들어가서 <b>AliaBot</b>을 검색한 뒤 기존 앱을 완전히 <b>'제거(Uninstall)'</b>하고 사이트에 다시 접속해 주세요.
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="manual-section">
+                                <h4>2. 빠른 메모 및 🎙️ 음성 연속 입력</h4>
+                                <ul>
+                                    <li><b>키보드 입력:</b> 하단 텍스트창에 내용을 치고 <b>Enter</b>를 누르면 즉시 추가됩니다. (Shift+Enter는 줄바꿈)</li>
+                                    <li><b>연속 음성 입력:</b> 🎤 버튼을 클릭하면 불이 켜지며 실시간 음성 인식을 시작합니다. 긴 문장도 중간에 끊기지 않고 계속 텍스트로 전환되며, 말을 다 마친 후에 마이크 버튼을 다시 누르면 자동으로 작성이 완료되어 등록됩니다.</li>
+                                </ul>
+                            </div>
+
+                            <div className="manual-section">
+                                <h4>3. ⚡ 카테고리 자동 지정 (! 명령어)</h4>
+                                <ul>
+                                    <li>텍스트 입력 시 첫 글자에 느낌표(<code style={{background: '#eee', padding: '2px 4px', borderRadius: '4px'}}>!</code>)와 함께 카테고리명을 적으면 전송 목적지가 자동으로 매핑됩니다.
+                                        <ul>
+                                            <li><code style={{color: '#e28743'}}>!일정</code> 또는 <code style={{color: '#e28743'}}>!캘린더</code> ➡️ 📅 캘린더 전송 카테고리</li>
+                                            <li><code style={{color: '#3498db'}}>!노션</code> 또는 <code style={{color: '#3498db'}}>!notion</code> ➡️ Notion 메모 카테고리</li>
+                                            <li><code style={{color: '#9b59b6'}}>!옵시디언</code> 또는 <code style={{color: '#9b59b6'}}>!obsidian</code> ➡️ Obsidian 메모 카테고리</li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="manual-section">
+                                <h4>4. ✨ AI 자동 태깅 및 한 줄 요약</h4>
+                                <ul>
+                                    <li>메모를 등록하면 백그라운드에서 AI(Gemini)가 텍스트 내용을 심층 분석하여 연관된 <b>키워드 태그(#태그)</b>와 <b>한 줄 요약(Summary)</b>을 즉각 생성해 붙여줍니다.</li>
+                                    <li>생성된 태그 칩을 클릭하면 해당 카테고리/태그만 필터링하여 모아볼 수 있습니다.</li>
+                                </ul>
+                            </div>
+
+                            <div className="manual-section">
+                                <h4>5. 📤 외부 서비스 전송 (Dispatch)</h4>
+                                <ul>
+                                    <li>각 메모 카드의 오른쪽 끝에 있는 <b>내보내기(📤)</b> 버튼을 누르면 Obsidian, Notion, Clipboard(클립보드 복사) 중 원하는 목적지를 복수 선택하여 동시에 보낼 수 있습니다.</li>
+                                    <li>설정(⚙️) 메뉴에 들어가 본인의 Notion API 키와 데이터베이스 ID를 등록해 두면 개인 노션 페이지와 완벽히 자동 동기화됩니다.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="manual-footer-actions">
+                            <button className="btn-secondary-action" onClick={copyUserManualToClipboard}>
+                                📋 설명서 텍스트 복사하기
+                            </button>
+                            <button className="btn-primary-action" onClick={() => setShowUserManualModal(false)}>
+                                닫기
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -1050,3 +1050,112 @@ input:focus {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
+
+/* --- User Manual Modal Styles --- */
+.btn-user-manual {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.25);
+}
+
+.btn-user-manual:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
+}
+
+.user-manual-modal {
+  max-width: 650px;
+  width: 90%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.manual-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 15px;
+  margin-bottom: 20px;
+  padding-right: 8px;
+  text-align: left;
+}
+
+.manual-section {
+  margin-bottom: 20px;
+  border-bottom: 1px dashed #e5e7eb;
+  padding-bottom: 15px;
+}
+
+.manual-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.manual-section h4 {
+  font-size: 0.95rem;
+  color: #1e1b4b;
+  margin-bottom: 8px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.manual-section ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.manual-section li {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.manual-footer-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-secondary-action {
+  flex: 1;
+  padding: 12px;
+  background-color: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary-action:hover {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+/* 모바일 모달 높이 및 레이아웃 패치 */
+@media (max-width: 600px) {
+  .user-manual-modal {
+    max-height: 80vh;
+    border-radius: 20px 20px 0 0 !important;
+  }
+  
+  .manual-footer-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

@@ -161,6 +161,45 @@ function App() {
                     } catch (e) {
                         console.warn('[seq] 보정 처리 실패:', e?.message || e)
                     }
+
+                    // [AI Backfill] 요약/태깅 미처리된 구형 메모 자동 복원 엔진
+                    try {
+                        const pendingAiDocs = todosData.filter(todo => 
+                            todo.text && 
+                            (!todo.tags || todo.tags.length === 0) && 
+                            !todo.summary && 
+                            todo.aiProcessed !== true
+                        )
+                        if (pendingAiDocs.length > 0) {
+                            console.log(`[AI Backfill] 요약이 비어 있는 구형 문서 ${pendingAiDocs.length}개 발견. 백그라운드 자동 복원을 실행합니다...`)
+                            
+                            // 무부하 순차 비동기 호출 (최대 5개씩 처리)
+                            pendingAiDocs.slice(0, 5).forEach(todo => {
+                                analyzeWithGemini(todo.text, null)
+                                    .then(async (result) => {
+                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, todo.id)
+                                        if (result) {
+                                            await updateDoc(todoRef, {
+                                                tags: result.tags || [],
+                                                summary: result.summary || '',
+                                                aiProcessed: true
+                                            })
+                                        } else {
+                                            await updateDoc(todoRef, { aiProcessed: true })
+                                        }
+                                        console.log(`[AI Backfill] 문서 ${todo.seq || todo.id} 요약 복구 완료`)
+                                    })
+                                    .catch(err => {
+                                        console.warn(`[AI Backfill] 문서 ${todo.id} 분석 실패:`, err.message)
+                                        // 무한 호출 방지를 위해 aiProcessed를 true로 찍어서 다음 스캔에서 스킵 유도
+                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, todo.id)
+                                        updateDoc(todoRef, { aiProcessed: true }).catch(() => {})
+                                    })
+                            })
+                        }
+                    } catch (e) {
+                        console.warn('[AI Backfill] 복구 도중 예외 발생:', e?.message || e)
+                    }
                 })
 
                 return () => unsubscribeTodos() // cleanup listener
@@ -751,8 +790,8 @@ function App() {
                   .map((todo, index) => (
                     <li key={todo.id} className={`todo-item ${todo.completed ? 'completed' : ''}`}>
                         <div className="todo-left">
-                            {/* 과거 데이터에 seq가 없을 수 있으므로 UI 표시용 fallback을 둡니다. */}
-                            <span className="todo-number">{todo.seq ?? (index + 1)}</span>
+                            {/* 과거 데이터에 seq가 없을 수 있으므로 UI 표시용 fallback을 둡니다. (역순 공식) */}
+                            <span className="todo-number">{todo.seq ?? (todos.length - index)}</span>
                             <label className="checkbox-container">
                                 <input
                                     type="checkbox"

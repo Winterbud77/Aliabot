@@ -1,5 +1,5 @@
 // Service Worker with icons in cache
-const CACHE_NAME = 'todo-cache-v4';
+const CACHE_NAME = 'todo-cache-v5';
 const urlsToCache = [
     '/',
     '/index.html',

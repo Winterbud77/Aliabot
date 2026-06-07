@@ -7,6 +7,14 @@ import { sendToObsidian } from './api/obsidian'
 import { sendToNotion } from './api/notion'
 import { analyzeWithGemini } from './api/gemini'
 import { getSuggestedDestinations } from './utils/routingRules'
+import { isEmailAllowed, getAllowlistDeniedMessage } from './utils/authAllowlist'
+import {
+    shouldShowPwaInstallHint,
+    isPwaBannerDismissed,
+    dismissPwaBanner,
+    getPwaInstallSteps,
+} from './utils/pwaInstall'
+import { buildChronologicalSeqUpdates } from './utils/seqBackfill'
 
 function App() {
     const [user, setUser] = useState(null)
@@ -29,6 +37,10 @@ function App() {
     const [exportSelectedDestinations, setExportSelectedDestinations] = useState([])
     const [exportActionType, setExportActionType] = useState('copy') // 'copy' | 'move'
     const [showSettingsModal, setShowSettingsModal] = useState(false)
+    const [showPwaHelpModal, setShowPwaHelpModal] = useState(false)
+    const [showPwaBanner, setShowPwaBanner] = useState(() => {
+        return shouldShowPwaInstallHint() && !isPwaBannerDismissed()
+    })
 
     // API Keys (BYOK)
     const [apiKeys, setApiKeys] = useState(() => {
@@ -74,6 +86,19 @@ function App() {
 
     useEffect(() => {
         const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+            // allowlist: 초대된 Google 계정 이메일만 허용 (클라이언트 1차 + Blocking Function)
+            if (currentUser && !isEmailAllowed(currentUser.email)) {
+                alert(getAllowlistDeniedMessage(currentUser.email))
+                try {
+                    await signOut(auth)
+                } catch (e) {
+                    console.warn('[Auth] allowlist 거부 후 signOut 실패:', e)
+                }
+                setUser(null)
+                setTodos([])
+                return
+            }
+
             setUser(currentUser)
             
             if (currentUser) {
@@ -110,108 +135,31 @@ function App() {
 
                     setTodos(todosData)
 
-                    // Phase 5.3: seq 필드 백필/보정 (선택)
-                    // - 원칙: 오래된 메모=1, 최신 메모=큰 번호 (정렬이 최신순이어도 번호는 최신이 가장 큼)
-                    // - 과거에 잘못 백필되어 "최신=1"로 뒤집힌 경우도 1회성으로 보정합니다.
+                    // seq 보정: seq 필드가 없는 문서가 1개라도 있거나, 중복/역전 감지 시 createdAt 기준 1..N (오래된=1, 최신=큰 번호) 자동 복구
                     try {
-                        const backfillFlagKeyV1 = 'alia-bot-seq-backfilled-v1'
-                        const backfillFlagKeyV2 = 'alia-bot-seq-backfilled-v2'
-                        const alreadyBackfilledV1 = localStorage.getItem(backfillFlagKeyV1)
-                        const alreadyBackfilledV2 = localStorage.getItem(backfillFlagKeyV2)
-
-                        const hasMissingSeq = snapshot.docs.some((doc) => {
-                            const data = doc.data() || {}
-                            return data.seq == null
-                        })
-
-                        const docsCount = snapshot.docs.length
-                        const firstSeq = (snapshot.docs[0]?.data?.() || {}).seq
-                        const lastSeq = (snapshot.docs[docsCount - 1]?.data?.() || {}).seq
-
-                        // 뒤집힘(최신=1, 과거=큰 번호) 패턴 감지: 첫 seq=1 이고 마지막 seq가 대략 length 근처면 역전으로 판단
-                        const looksInverted =
-                            docsCount >= 3 &&
-                            typeof firstSeq === 'number' &&
-                            typeof lastSeq === 'number' &&
-                            firstSeq === 1 &&
-                            lastSeq >= docsCount - 1
-
-                        // (A) seq 누락 백필: v1에서 돌린 적이 없을 때만 수행
-                        if (!alreadyBackfilledV1 && hasMissingSeq) {
-                            localStorage.setItem(backfillFlagKeyV1, '1')
-
+                        const docsNeedSeq = snapshot.docs.filter(doc => doc.data()?.seq === undefined || doc.data()?.seq === null)
+                        if (docsNeedSeq.length > 0 && snapshot.docs.length > 0) {
+                            console.log(`[seq] seq 필드가 없는 구형 문서 ${docsNeedSeq.length}개 발견. 순번 복원 작업을 시작합니다...`)
                             ;(async () => {
                                 try {
-                                    for (let index = 0; index < snapshot.docs.length; index++) {
-                                        const docSnap = snapshot.docs[index]
-                                        const data = docSnap.data() || {}
-                                        if (data.seq != null) continue
-
-                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, docSnap.id)
-                                        // snapshot은 createdAt desc(최신→과거) 정렬이므로,
-                                        // 최신은 큰 번호, 과거는 작은 번호가 되도록 역방향으로 부여합니다.
-                                        await updateDoc(todoRef, { seq: docsCount - index })
+                                    const updates = buildChronologicalSeqUpdates(snapshot.docs)
+                                    for (const item of updates) {
+                                        if (item.oldSeq === item.newSeq) continue
+                                        const todoRef = doc(
+                                            db,
+                                            `users/${currentUser.uid}/todos`,
+                                            item.id
+                                        )
+                                        await updateDoc(todoRef, { seq: item.newSeq })
                                     }
+                                    console.log('[seq] createdAt 기준 seq 복원 완료')
                                 } catch (e) {
-                                    console.warn('[seq-backfill] 실패:', e?.message || e)
-                                }
-                            })()
-                        }
-
-                        // (B) seq 역전 보정: 이미 seq가 있는데 "최신=1"로 보이면 v2에서 1회 재정렬
-                        if (!alreadyBackfilledV2 && !hasMissingSeq && looksInverted) {
-                            localStorage.setItem(backfillFlagKeyV2, '1')
-
-                            ;(async () => {
-                                try {
-                                    for (let index = 0; index < snapshot.docs.length; index++) {
-                                        const docSnap = snapshot.docs[index]
-                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, docSnap.id)
-                                        await updateDoc(todoRef, { seq: docsCount - index })
-                                    }
-                                } catch (e) {
-                                    console.warn('[seq-backfill-v2] 실패:', e?.message || e)
-                                }
-                            })()
-                        }
-
-                        // (C) 레거시 1~53번 seq만 뒤집기 (내용은 그대로, 번호만 1↔53)
-                        // - 이전 세션에서 본문 순서만 바뀌고 seq는 1,2,3…53으로 남아 있는 경우
-                        // - 54번 이후(신규)는 건드리지 않음
-                        const legacySeqFlipFlagKey = 'alia-bot-seq-legacy-flip-v3'
-                        const alreadyLegacyFlipped = localStorage.getItem(legacySeqFlipFlagKey)
-                        const LEGACY_SEQ_MAX = 53
-
-                        const needsLegacySeqFlip = snapshot.docs.some((docSnap) => {
-                            const seq = (docSnap.data() || {}).seq
-                            return typeof seq === 'number' && seq >= 1 && seq <= LEGACY_SEQ_MAX
-                        })
-
-                        if (!alreadyLegacyFlipped && needsLegacySeqFlip) {
-                            localStorage.setItem(legacySeqFlipFlagKey, '1')
-
-                            ;(async () => {
-                                try {
-                                    for (const docSnap of snapshot.docs) {
-                                        const data = docSnap.data() || {}
-                                        const oldSeq = data.seq
-                                        if (typeof oldSeq !== 'number' || oldSeq < 1 || oldSeq > LEGACY_SEQ_MAX) {
-                                            continue
-                                        }
-
-                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, docSnap.id)
-                                        // 1→53, 2→52, … 53→1 (본문 text/category/tags는 변경하지 않음)
-                                        await updateDoc(todoRef, { seq: LEGACY_SEQ_MAX + 1 - oldSeq })
-                                    }
-                                    console.log('[seq-legacy-flip-v3] 1~53번 seq 번호만 역전 완료')
-                                } catch (e) {
-                                    console.warn('[seq-legacy-flip-v3] 실패:', e?.message || e)
-                                    localStorage.removeItem(legacySeqFlipFlagKey)
+                                    console.warn('[seq] 복원 실패:', e?.message || e)
                                 }
                             })()
                         }
                     } catch (e) {
-                        console.warn('[seq-backfill] 로컬 플래그 처리 실패:', e?.message || e)
+                        console.warn('[seq] 보정 처리 실패:', e?.message || e)
                     }
                 })
 
@@ -285,6 +233,17 @@ function App() {
                 return
             }
 
+            // Blocking Function / allowlist 거부
+            if (
+                code === 'auth/user-disabled' ||
+                code === 'auth/permission-denied' ||
+                (typeof error?.message === 'string' &&
+                    error.message.includes('초대된 Google 계정'))
+            ) {
+                alert(getAllowlistDeniedMessage(null))
+                return
+            }
+
             if (code) {
                 alert(`로그인에 실패했습니다. (${code})`)
             } else {
@@ -338,12 +297,16 @@ function App() {
             const { cleanedText, category, metadata } = parseCommand(inputValue);
 
             // 1. Firestore에 즉시 저장 (AI 분석 전, 빠른 UX 보장)
+            const maxExistingSeq = todos.reduce(
+                (max, todo) => Math.max(max, typeof todo.seq === 'number' ? todo.seq : 0),
+                0
+            )
             const docRef = await addDoc(collection(db, `users/${user.uid}/todos`), {
                 text: cleanedText,
                 category: category,
                 metadata: metadata || {},
                 completed: false,
-                seq: todos.length + 1,  // 게시판식 고정 번호 (생성 시 확정)
+                seq: maxExistingSeq + 1,  // 게시판식 고정 번호 (기존 최대 seq + 1)
                 tags: [],
                 summary: '',
                 aiProcessed: false,
@@ -353,26 +316,27 @@ function App() {
             })
             setInputValue('')
 
-            // 2. Gemini API 키가 있을 때만 백그라운드에서 AI 분석 실행
-            if (apiKeys.gemini) {
-                analyzeWithGemini(cleanedText, apiKeys.gemini)
-                    .then(async (result) => {
-                        if (result) {
-                            await updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
-                                tags: result.tags || [],
-                                summary: result.summary || '',
-                                aiProcessed: true
-                            })
-                        }
-                    })
-                    .catch(err => {
-                        console.warn('Gemini 분석 실패 (API 키를 확인해주세요):', err.message)
-                        // 실패해도 aiProcessed를 true로 표시하여 무한 로딩 스피너 방지
-                        updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
+            // 2. AI 분석 — BYOK 키 없어도 Cloud Function(호스트 Gemini) 사용
+            analyzeWithGemini(cleanedText, apiKeys.gemini || null)
+                .then(async (result) => {
+                    if (result) {
+                        await updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
+                            tags: result.tags || [],
+                            summary: result.summary || '',
                             aiProcessed: true
-                        }).catch(() => {})
-                    })
-            }
+                        })
+                    } else {
+                        await updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
+                            aiProcessed: true
+                        })
+                    }
+                })
+                .catch(err => {
+                    console.warn('Gemini 분석 실패:', err.message)
+                    updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
+                        aiProcessed: true
+                    }).catch(() => {})
+                })
         } catch (error) {
             console.error("Error adding todo:", error)
         }
@@ -653,9 +617,21 @@ function App() {
 
     return (
         <div className="app-container">
+            {/* 상단 고정: 로고·로그인·입력 (#63) */}
+            <div className="app-fixed-top">
             <div className="app-header">
                 <h1>AliaBot <span style={{fontSize: '0.4em', color: '#888'}}>v2.1</span></h1>
                 <div className="header-actions">
+                    {shouldShowPwaInstallHint() && (
+                        <button
+                            className="btn-pwa-help"
+                            onClick={() => setShowPwaHelpModal(true)}
+                            title="홈 화면에 추가 방법"
+                            type="button"
+                        >
+                            📲
+                        </button>
+                    )}
                     {user && (
                         <>
                             <button 
@@ -690,6 +666,33 @@ function App() {
                     )}
                 </div>
             </div>
+
+            {/* #62: 모바일 브라우저 — 홈 화면 추가 안내 배너 */}
+            {showPwaBanner && (
+                <div className="pwa-install-banner">
+                    <div className="pwa-install-banner-text">
+                        <strong>앱처럼 쓰려면</strong> 홈 화면에 추가하세요.
+                        <button
+                            type="button"
+                            className="pwa-install-banner-link"
+                            onClick={() => setShowPwaHelpModal(true)}
+                        >
+                            방법 보기
+                        </button>
+                    </div>
+                    <button
+                        type="button"
+                        className="pwa-install-banner-close"
+                        onClick={() => {
+                            dismissPwaBanner()
+                            setShowPwaBanner(false)
+                        }}
+                        aria-label="배너 닫기"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
             
             <div className="input-group">
                 <textarea
@@ -724,81 +727,10 @@ function App() {
                     </button>
                 </div>
             </div>
+            </div>{/* /.app-fixed-top */}
 
-            {/* --- Settings Modal (BYOK) --- */}
-            {showSettingsModal && (
-                <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <h3>⚙️ Conductor 설정</h3>
-                        <p className="modal-description">지휘자의 능력을 향상시키기 위해 개인 API 키를 등록해주세요. (로컬에만 안전하게 저장됩니다)</p>
-                        
-                        <div className="settings-group">
-                            <label>OpenAI API Key (Whisper/GPT)</label>
-                            <input 
-                                type="password" 
-                                placeholder="sk-..." 
-                                value={apiKeys.openai}
-                                onChange={e => setApiKeys({...apiKeys, openai: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="settings-group">
-                            <label>Gemini API Key (Parsing/Summary)</label>
-                            <input 
-                                type="password" 
-                                placeholder="AIza..." 
-                                value={apiKeys.gemini}
-                                onChange={e => setApiKeys({...apiKeys, gemini: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="settings-group">
-                            <label>Notion API Token (Connect to Note)</label>
-                            <input 
-                                type="password" 
-                                placeholder="secret_..." 
-                                value={apiKeys.notion}
-                                onChange={e => setApiKeys({...apiKeys, notion: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="settings-group">
-                            <label>Notion Database ID (대상 DB)</label>
-                            <input
-                                type="text"
-                                placeholder="예: 1234abcd-...."
-                                value={apiKeys.notionDatabaseId}
-                                onChange={e => setApiKeys({...apiKeys, notionDatabaseId: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="settings-group">
-                            <label>Notion Title Property Name</label>
-                            <input
-                                type="text"
-                                placeholder="기본: Title"
-                                value={apiKeys.notionTitleProperty}
-                                onChange={e => setApiKeys({...apiKeys, notionTitleProperty: e.target.value})}
-                            />
-                        </div>
-
-                        <div className="settings-group">
-                            <label>Notion Content Property Name</label>
-                            <input
-                                type="text"
-                                placeholder="기본: Content"
-                                value={apiKeys.notionContentProperty}
-                                onChange={e => setApiKeys({...apiKeys, notionContentProperty: e.target.value})}
-                            />
-                        </div>
-
-                        <button className="btn-primary-action" onClick={() => setShowSettingsModal(false)}>
-                            저장 및 닫기
-                        </button>
-                    </div>
-                </div>
-            )}
-
+            {/* 메모 목록만 스크롤 (#63) */}
+            <div className="todo-scroll-region">
             <ul className="todo-list">
                 {!activeTag && (
                     <div className="tag-help-banner">
@@ -870,7 +802,7 @@ function App() {
                                                 {todo.text}
                                             </span>
                                         </div>
-                                        {todo.aiProcessed === false && apiKeys.gemini && (
+                                        {todo.aiProcessed === false && user && (
                                             <span className="ai-processing">✨ AI 분석 중...</span>
                                         )}
                                         {todo.summary && (
@@ -918,6 +850,104 @@ function App() {
                     </li>
                 ))}
             </ul>
+            </div>{/* /.todo-scroll-region */}
+
+            {/* --- Settings Modal (BYOK) --- */}
+            {showSettingsModal && (
+                <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3>⚙️ Conductor 설정</h3>
+                        <p className="modal-description">
+                            Notion 등 개인 연동 키를 입력하세요. AI 태깅/요약은 호스트 Gemini 키로 자동 제공됩니다.
+                            (고급: Gemini 키를 입력하면 본인 BYOK로 우선 사용)
+                        </p>
+                        
+                        <div className="settings-group">
+                            <label>OpenAI API Key (Whisper/GPT)</label>
+                            <input 
+                                type="password" 
+                                placeholder="sk-..." 
+                                value={apiKeys.openai}
+                                onChange={e => setApiKeys({...apiKeys, openai: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Gemini API Key (선택 — BYOK 오버라이드)</label>
+                            <input 
+                                type="password" 
+                                placeholder="비워두면 호스트 AI 사용" 
+                                value={apiKeys.gemini}
+                                onChange={e => setApiKeys({...apiKeys, gemini: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Notion API Token (Connect to Note)</label>
+                            <input 
+                                type="password" 
+                                placeholder="secret_..." 
+                                value={apiKeys.notion}
+                                onChange={e => setApiKeys({...apiKeys, notion: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Notion Database ID (대상 DB)</label>
+                            <input
+                                type="text"
+                                placeholder="예: 1234abcd-...."
+                                value={apiKeys.notionDatabaseId}
+                                onChange={e => setApiKeys({...apiKeys, notionDatabaseId: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Notion Title Property Name</label>
+                            <input
+                                type="text"
+                                placeholder="기본: Title"
+                                value={apiKeys.notionTitleProperty}
+                                onChange={e => setApiKeys({...apiKeys, notionTitleProperty: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>Notion Content Property Name</label>
+                            <input
+                                type="text"
+                                placeholder="기본: Content"
+                                value={apiKeys.notionContentProperty}
+                                onChange={e => setApiKeys({...apiKeys, notionContentProperty: e.target.value})}
+                            />
+                        </div>
+
+                        <button className="btn-primary-action" onClick={() => setShowSettingsModal(false)}>
+                            저장 및 닫기
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* #62: PWA 홈 화면 추가 안내 모달 */}
+            {showPwaHelpModal && (
+                <div className="modal-overlay" onClick={() => setShowPwaHelpModal(false)}>
+                    <div className="modal-content pwa-help-modal" onClick={e => e.stopPropagation()}>
+                        <h3>📲 홈 화면에 추가하기</h3>
+                        <p className="modal-description">
+                            브라우저 주소창 대신 앱 아이콘으로 AliaBot을 열 수 있습니다.
+                        </p>
+                        <ol className="pwa-help-steps">
+                            {getPwaInstallSteps().map((step, index) => (
+                                <li key={index}>{step}</li>
+                            ))}
+                        </ol>
+                        <button className="btn-primary-action" onClick={() => setShowPwaHelpModal(false)}>
+                            확인
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Export Modal */}
             {exportModalTodo && (

@@ -17,20 +17,23 @@
 
 ### 🔀 Phase 5.3: 라우팅(Routing) 및 다중 노트 분할
 - **플러그인 기반 전송 UI:** 현재 단일 버튼인 '내보내기'를 모달창으로 확장하여, 메모의 성격에 따라 목적지를 체크박스로 다중 선택할 수 있게 합니다.
-- **구현 상태(이번 세션):** Export 모달을 `목적지(복수 체크)` 기반으로 전환 (Obsidian/Notion/Clipboard)
+- **구현 상태(이번 세션 완료):** Export 모달을 `목적지(복수 체크)` 기반으로 전환 (Obsidian/Notion/Clipboard)
   - 태그 기반 추천(`src/utils/routingRules.js`)으로 체크 상태가 초기화됩니다.
   - Notion은 `Notion API Token + Database ID + Title/Content Property Name`을 Settings에서 입력해야 동작합니다.
-- **노트 플랫폼 연동 (Connect to Notes):** 
-  - **Notion:** 공식 API를 통해 특정 데이터베이스(표)에 메모 삽입.
-  - **Obsidian:** 로컬 파일 시스템 제약 우회를 위한 Markdown 포맷 최적화 및 드래그 앤 드롭/클립보드 방식 고도화.
-  - **OneNote:** (추후 옵션) Microsoft Graph API 연동.
+  - Obsidian은 로컬 PC에서 Obsidian이 켜져 있고 `Local REST API` 커뮤니티 플러그인이 실행 중일 때 클라이언트 다이렉트 HTTPS 통신으로 삽입됩니다.
 
-### 🗓️ Phase 5.4: 일정 및 소통 채널 확장
-- **Calendar 연결:** Google Calendar API를 연동하여 "내일 오후 3시 회의" 같은 메모를 AI가 파싱하여 자동으로 캘린더 일정으로 등록합니다.
-- **DB 최적화:** Firebase Firestore의 데이터 구조를 '단순 메모'에서 '다중 메타데이터(목적지, 태그, 일정 여부 포함)'를 담을 수 있는 구조로 마이그레이션합니다.
+### 🗓️ Phase 5.4: 일정(Calendar) 및 이메일(Mail) 채널 확장
+- **Google Calendar 연결 (난이도: 보통):**
+  - 로그인 시 구글 캘린더 쓰기 권한(`https://www.googleapis.com/auth/calendar.events`) Scope를 요청하여 액세스 토큰 획득.
+  - "!일정" 카테고리의 텍스트를 AI가 분석(시간, 날짜, 장소 파싱)하여 구글 캘린더에 자동으로 이벤트를 삽입하는 프론트엔드 연동 구현.
+- **이메일(Mail) 발송 기능 (난이도: 낮음 - Blaze 요금제 활용):**
+  - 현재 Firebase가 **Blaze(종량제)** 요금제이므로 외부 메일 API(Resend, SendGrid 등) 호출에 제약이 없습니다.
+  - 중요한 SOP 노트나 일일 요약 브리핑을 이메일로 즉시 발송(내보내기 목적지 목록에 '이메일' 추가)하여 지인 혹은 본인에게 메일로 자동 전송하는 API 기능을 통합합니다.
 
 ### 🤖 Phase 6.1: Gemini 문서 분석 (NotebookLM 대체)
-- Gemini API로 문서 업로드 → 분석 → 인사이트 반환 기능 구현
+- **NotebookLM 연동 전략:**
+  - NotebookLM은 외부 오픈 API가 제공되지 않으므로, AliaBot에서 내보내진 Notion이나 Google Drive 폴더를 NotebookLM의 Source로 물리는 간접 연계 전략을 사용합니다.
+  - 혹은 AliaBot 자체 내부에 Gemini API를 사용하여, 사용자가 업로드한 긴 텍스트 파일/PDF를 심층 분석하여 요약본 노트를 추출해 주는 자체 내장 "Gemini AI 분석기"를 구현할 수 있습니다.
 
 ### 🌿 Phase 6.2: Priva RPA 브리지 연동
 - **전제 조건:** Priva Office Direct(PODesktop.exe) 로컬 RPA 자동화 스크립트 완성 (ChatGPT 프로젝트 SOP 취합 중)
@@ -48,13 +51,12 @@
 
 ## 2. 📚 이전 세션 VTL & SOP 점검 완료 상태
 
-현재 `Outputs` 폴더에 지난 대화들의 모든 핵심 지식과 해결 과정이 완벽히 백업되어 있습니다. 새 세션의 AI(Claude 또는 Gemini)에게 **이 문서들과 함께 아래 파일들을 읽어보라고 지시하시면 맥락이 100% 복원**됩니다.
+현재 `Docs` 및 `Outputs` 폴더에 지난 대화들의 모든 핵심 지식과 해결 과정이 완벽히 백업되어 있습니다. 새 세션의 AI(Claude 또는 Gemini)에게 **이 문서들과 함께 아래 파일들을 읽어보라고 지시하시면 맥락이 100% 복원**됩니다.
 
-- `20260428_React_Todo_PWA_SOP_Gemini_Antigravity.md`: PWA 설치 이슈 및 다중 모델 협업 표준 절차 (최종 완성본)
-- `20260428_React_Todo_PWA_TechLog_Gemini_Antigravity.md`: React PWA 초기 구축 기술 로그
-- `20260507_SidersBot_Phase2_VTL.md`: Firebase DB 및 음성 인식(STT) 도입 기술 로그
+- `Docs/20260608_AliaBot_Phase5_PWA_AI_Backfill_VTL_SOP.md`: PWA 설치 트러블슈팅, 서비스워커 갱신, AI 백필 및 뷰포트 개선 기술로그 (최신)
+- `20260428_React_Todo_PWA_SOP_Gemini_Antigravity.md`: PWA 설치 이슈 및 다중 모델 협업 표준 절차 (기초)
 - `20260510_AliaBot_Phase4_Deployment_VTL.md`: Vercel GitOps 자동 배포 및 Firestore Security Rules 구축 기록
-- `20260512_AliaBot_MultiAgent_Strategy_VTL.md`: Antigravity 내 세션 분리 및 모델 교체 시 맥락 유지/파일 공유 아키텍처 (최신)
+- `20260512_AliaBot_MultiAgent_Strategy_VTL.md`: Antigravity 내 세션 분리 및 모델 교체 시 맥락 유지/파일 공유 아키텍처
 
 ---
 
@@ -62,4 +64,4 @@
 
 사용자님, 새로운 탭에서 대화창(Conversation Session)을 만드신 후 첫 마디로 아래 문장을 복사해서 붙여넣어 주세요!
 
-> **"안녕! 우리는 지금 AliaBot(PWA 지휘자 앱) 프로젝트의 Phase 5.2를 시작할 거야. 작업을 시작하기 전에 프로젝트 폴더 내 `Docs/NextSession_ToDo.md` 파일과 `Outputs` 폴더의 가장 최근 VTL 문서들을 읽고 현재 우리의 아키텍처와 이번 세션의 목표를 파악해 줘. 완료되면 `feature-ai-routing` 이라는 브랜치를 새로 파고 알려줘!"**
+> **"안녕! 우리는 지금 AliaBot(PWA 지휘자 앱) 프로젝트 개발을 진행 중이야. 작업을 시작하기 전에 프로젝트 폴더 내 `Docs/NextSession_ToDo.md` 파일과 `Docs/20260608_AliaBot_Phase5_PWA_AI_Backfill_VTL_SOP.md` 기술 로그를 꼼꼼히 읽고 현재 우리의 아키텍처와 다음 단계인 [Google Calendar 연동, Email 발송 API 통합] 목표를 파악해 줘. 파악이 완료되면 준비되었다고 답변하고, 개발 계획을 수립해 줘!"**

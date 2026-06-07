@@ -13,6 +13,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => cache.addAll(urlsToCache))
+            .then(() => self.skipWaiting()) // 새 서비스 워커가 대기 없이 즉시 설치되도록 강제
     );
 });
 
@@ -26,17 +27,20 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-// Activate event to clean up old caches
+// Activate event to clean up old caches and take control immediately
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((cacheNames) => {
-            return Promise.all(
-                cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
+        Promise.all([
+            caches.keys().then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((cacheName) => {
+                        if (cacheName !== CACHE_NAME) {
+                            return caches.delete(cacheName);
+                        }
+                    })
+                );
+            }),
+            self.clients.claim() // 새 서비스 워커가 제어권을 즉각 획득하도록 강제
+        ])
     );
 });

@@ -37,7 +37,7 @@ export function buildChronologicalSeqUpdates(docs) {
   }));
 }
 
-/** v3 레거시 flip 이후 1~53 구간이 역전된 패턴인지 (v4 실행 필요) */
+/** v3 레거시 flip 이후 1~53 구간이 역전된 패턴인지 */
 export function looksLikeLegacySeqMismatch(docs) {
   if (docs.length < 3) return false;
 
@@ -56,4 +56,13 @@ export function looksLikeLegacySeqMismatch(docs) {
   }
 
   return mismatchCount >= 2;
+}
+
+/** seq 번호 중 중복된 숫자가 존재하는지 확인 */
+export function hasDuplicateSeqs(docs) {
+  const seqs = docs
+    .map(d => d.data()?.seq)
+    .filter(s => typeof s === 'number' && s > 0);
+  const uniqueSeqs = new Set(seqs);
+  return seqs.length !== uniqueSeqs.size;
 }

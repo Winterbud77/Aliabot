@@ -14,7 +14,7 @@ import {
     dismissPwaBanner,
     getPwaInstallSteps,
 } from './utils/pwaInstall'
-import { buildChronologicalSeqUpdates } from './utils/seqBackfill'
+import { buildChronologicalSeqUpdates, looksLikeLegacySeqMismatch, hasDuplicateSeqs } from './utils/seqBackfill'
 
 function App() {
     const [user, setUser] = useState(null)
@@ -139,8 +139,10 @@ function App() {
                     // seq 보정: seq 필드가 없는 문서가 1개라도 있거나, 중복/역전 감지 시 createdAt 기준 1..N (오래된=1, 최신=큰 번호) 자동 복구
                     try {
                         const docsNeedSeq = snapshot.docs.filter(doc => doc.data()?.seq === undefined || doc.data()?.seq === null)
-                        if (docsNeedSeq.length > 0 && snapshot.docs.length > 0) {
-                            console.log(`[seq] seq 필드가 없는 구형 문서 ${docsNeedSeq.length}개 발견. 순번 복원 작업을 시작합니다...`)
+                        const hasDuplicates = hasDuplicateSeqs(snapshot.docs)
+                        const isMismatched = looksLikeLegacySeqMismatch(snapshot.docs)
+                        if ((docsNeedSeq.length > 0 || hasDuplicates || isMismatched) && snapshot.docs.length > 0) {
+                            console.log(`[seq] 보정 트리거 작동: 누락 ${docsNeedSeq.length}개, 중복 ${hasDuplicates}, 역전 ${isMismatched}. 순번 복원 작업을 시작합니다...`)
                             ;(async () => {
                                 try {
                                     const updates = buildChronologicalSeqUpdates(snapshot.docs)
@@ -167,9 +169,7 @@ function App() {
                     try {
                         const pendingAiDocs = todosData.filter(todo => 
                             todo.text && 
-                            (!todo.tags || todo.tags.length === 0) && 
-                            !todo.summary && 
-                            todo.aiProcessed !== true
+                            (todo.aiProcessed !== true || ((!todo.tags || todo.tags.length === 0) && !todo.summary))
                         )
                         if (pendingAiDocs.length > 0) {
                             console.log(`[AI Backfill] 요약이 비어 있는 구형 문서 ${pendingAiDocs.length}개 발견. 백그라운드 자동 복원을 실행합니다...`)

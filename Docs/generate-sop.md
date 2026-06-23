@@ -7,10 +7,11 @@ description: 표준화된 문제 해결 SOP 및 초상세 기술 로그(TechLog_
 이 워크플로우는 트러블슈팅 세션이 종료된 후, 작업 내용을 옵시디언 금고의 표준 규격에 맞춰 문서화하기 위한 AI 지침입니다. 사용자님이 `/generate-sop` 또는 관련 명령을 내리면 이 절차를 수행합니다.
 
 ## 1. 파일 명명 및 저장 위치 규칙
-- **저장 위치:** 옵시디언 볼트 루트 (또는 사용자 지정 폴더)
+- **저장 위치:** 프로젝트의 `Docs/` 폴더 (원본 마스터 저장소)
+  - *동기화*: 작성 완료 후 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 통해 OneDrive Obsidian Vault(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\AliaBot_Docs\`)로 미러링하여 모바일 동기화 및 중복성 문제를 동시에 해결합니다.
 - **명명 규칙:** `YYYYMMDD_[주제]_[문서유형]_[AI모델명]_Antigravity.md`
-  - 예: `20260408_디스크정리_TechLog_Gemini_Antigravity.md`
-  - 예: `20260408_디스크정리_SOP_Gemini_Antigravity.md`
+  - 예: `Docs/20260408_디스크정리_TechLog_Gemini_Antigravity.md`
+  - 예: `Docs/20260408_디스크정리_SOP_Gemini_Antigravity.md`
 
 ## 2. YAML 프론트매터(Frontmatter) 표준 규격
 모든 문서는 아래 필드를 반드시 포함해야 합니다.

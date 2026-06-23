@@ -25,6 +25,7 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
 
 // Option A: Callable Functions (호스트 Gemini 키 프록시)
 export const FUNCTIONS_REGION = "asia-northeast3";

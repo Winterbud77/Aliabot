@@ -32,9 +32,24 @@ export function getSuggestedDestinations(tags) {
     destinations.add('obsidian')
   }
 
-  // Meeting/Calendar는 Phase 5.4이므로 지금 UI에서는 추천에 넣지 않습니다.
-  if (hasTag('meeting') || hasTag('calendar')) {
-    // 추후 구현용
+  // Calendar 전송 추천 (Phase 5.4)
+  if (
+    hasTag('meeting') ||
+    hasTag('calendar') ||
+    hasTag('일정') ||
+    hasTag('schedule')
+  ) {
+    destinations.add('calendar')
+  }
+
+  // 이메일 전송 추천 (Phase 5.4)
+  if (
+    hasTag('email') ||
+    hasTag('mail') ||
+    hasTag('이메일') ||
+    hasTag('전송')
+  ) {
+    destinations.add('email')
   }
 
   // 추천 규칙으로 아무 것도 나오지 않으면 Clipboard로라도 복사 제공

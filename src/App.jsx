@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { auth, db, googleProvider } from './firebase'
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth'
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth'
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore'
 import { parseCommand } from './utils/parser'
 import { sendToObsidian } from './api/obsidian'
 import { sendToNotion } from './api/notion'
 import { analyzeWithGemini } from './api/gemini'
+import { insertCalendarEvent } from './api/calendar'
+import { sendEmail } from './api/mail'
 import { getSuggestedDestinations } from './utils/routingRules'
 import { isEmailAllowed, getAllowlistDeniedMessage } from './utils/authAllowlist'
 import {
@@ -31,6 +33,11 @@ function App() {
     const sttBaseTextRef = useRef('')           // 음성 입력 시작 시점의 기존 텍스트
     const sttCommittedRef = useRef('')          // 이번 세션에서 확정(final)된 음성 텍스트
     const sttWantsListeningRef = useRef(false)  // 사용자가 마이크를 끌 때까지 듣기 유지
+    
+    // Google Calendar API용 Access Token 관리
+    const [googleAccessToken, setGoogleAccessToken] = useState(() => {
+        return localStorage.getItem('alia-bot-google-access-token') || ''
+    })
     
     // 모달 상태 관리
     const [exportModalTodo, setExportModalTodo] = useState(null)
@@ -67,8 +74,16 @@ function App() {
     useEffect(() => {
         ;(async () => {
             try {
-                await getRedirectResult(auth)
-                // 결과는 onAuthStateChanged에서 잡히므로 여기서는 별도 처리하지 않습니다.
+                const result = await getRedirectResult(auth)
+                if (result) {
+                    const credential = GoogleAuthProvider.credentialFromResult(result)
+                    const token = credential?.accessToken
+                    if (token) {
+                        setGoogleAccessToken(token)
+                        localStorage.setItem('alia-bot-google-access-token', token)
+                        console.log('[Auth] Redirect 구글 액세스 토큰 획득 성공')
+                    }
+                }
             } catch (e) {
                 // redirect 결과 처리 실패는 치명적이지 않으므로 경고만 남깁니다.
                 console.warn('[Auth] redirect 결과 처리 실패:', e?.code || e?.message || e)
@@ -176,13 +191,16 @@ function App() {
                             
                             // 무부하 순차 비동기 호출 (최대 5개씩 처리)
                             pendingAiDocs.slice(0, 5).forEach(todo => {
-                                analyzeWithGemini(todo.text, null)
+                                analyzeWithGemini(todo.text, apiKeys.gemini || null)
                                     .then(async (result) => {
                                         const todoRef = doc(db, `users/${currentUser.uid}/todos`, todo.id)
                                         if (result) {
                                             await updateDoc(todoRef, {
                                                 tags: result.tags || [],
                                                 summary: result.summary || '',
+                                                metadata: {
+                                                    parsedEvent: result.parsedEvent || null
+                                                },
                                                 aiProcessed: true
                                             })
                                         } else {
@@ -276,7 +294,16 @@ function App() {
     const handleLogin = async () => {
         try {
             // 일부 환경(내장 브라우저/팝업 정책)에서 팝업이 막히면 redirect로 폴백합니다.
-            await signInWithPopup(auth, googleProvider)
+            const result = await signInWithPopup(auth, googleProvider)
+            if (result) {
+                const credential = GoogleAuthProvider.credentialFromResult(result)
+                const token = credential?.accessToken
+                if (token) {
+                    setGoogleAccessToken(token)
+                    localStorage.setItem('alia-bot-google-access-token', token)
+                    console.log('[Auth] Popup 구글 액세스 토큰 획득 성공')
+                }
+            }
         } catch (error) {
             console.error("Login failed:", error)
             const code = error?.code || ''
@@ -315,7 +342,7 @@ function App() {
             if (code) {
                 alert(`로그인에 실패했습니다. (${code})`)
             } else {
-                alert("로그인에 실패했습니다. (팝업 차단/브라우저 정책을 확인해주세요)")
+                alert("Login failed. (Check popup blocks/browser policies)")
             }
         }
     }
@@ -323,6 +350,8 @@ function App() {
     const handleLogout = async () => {
         try {
             await signOut(auth)
+            setGoogleAccessToken('')
+            localStorage.removeItem('alia-bot-google-access-token')
         } catch (error) {
             console.error("Logout failed:", error)
         }
@@ -391,6 +420,9 @@ function App() {
                         await updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
                             tags: result.tags || [],
                             summary: result.summary || '',
+                            metadata: {
+                                parsedEvent: result.parsedEvent || null
+                            },
                             aiProcessed: true
                         })
                     } else {
@@ -598,12 +630,13 @@ function App() {
     const resolvePrimaryCategoryFromDestinations = (destinations) => {
         if (!destinations || destinations.length === 0) return 'todo'
         if (destinations.includes('calendar')) return 'calendar'
+        if (destinations.includes('email')) return 'email'
         if (destinations.includes('obsidian')) return 'obsidian'
         if (destinations.includes('notion')) return 'notion'
         return 'todo'
     }
 
-    // Export Handler (사후 내보내기) - Phase 5.3 다중 목적지 Dispatch
+    // Export Handler (사후 내보내기) - Phase 5.4 다중 목적지 Dispatch
     const handleDispatchExport = async () => {
         if (!exportModalTodo) return
         if (!user) {
@@ -645,6 +678,37 @@ function App() {
                     alert(`❌ Notion 전송 실패: ${result?.error || '알 수 없는 오류'}`)
                     return
                 }
+            } else if (destination === 'calendar') {
+                if (!googleAccessToken) {
+                    alert('❌ 구글 캘린더 전송 실패: 구글 인증이 유효하지 않습니다. 로그아웃 후 다시 구글 로그인을 수행해 주세요.')
+                    return
+                }
+                
+                // metadata.parsedEvent 또는 fallback 설정
+                const eventDetails = todo.metadata?.parsedEvent || {
+                    summary: todo.summary || todo.text.slice(0, 50),
+                    description: todo.text
+                }
+                
+                const result = await insertCalendarEvent(googleAccessToken, eventDetails)
+                if (!result?.success) {
+                    alert(`❌ 구글 캘린더 전송 실패: ${result?.error || '알 수 없는 오류'}`)
+                    return
+                }
+            } else if (destination === 'email') {
+                const emailHtml = todo.summary 
+                    ? `<h3>[AliaBot] 요약</h3><p><b>${todo.summary}</b></p><hr/><p>${todo.text.replace(/\n/g, '<br>')}</p>`
+                    : `<p>${todo.text.replace(/\n/g, '<br>')}</p>`;
+                
+                const result = await sendEmail({
+                    subject: todo.summary ? `[AliaBot] ${todo.summary}` : `[AliaBot] 메모 전송`,
+                    text: todo.text,
+                    html: emailHtml
+                })
+                if (!result?.success) {
+                    alert(`❌ 이메일 전송 실패: ${result?.error || '알 수 없는 오류'}`)
+                    return
+                }
             } else if (destination === 'clipboard') {
                 const result = await copyToClipboard(todo.text)
                 if (!result?.success) {
@@ -652,7 +716,6 @@ function App() {
                     return
                 }
             } else {
-                // 현재 UI에서는 지원하지 않는 destination인 경우 방어 처리
                 alert(`지원하지 않는 목적지입니다: ${destination}`)
                 return
             }
@@ -862,22 +925,24 @@ function App() {
                                 ) : (
                                     /* 일반 표시 모드 */
                                     <>
-                                        <div className="todo-main-row">
-                                            {todo.category && todo.category !== 'todo' && (
-                                                <span className={`badge badge-${todo.category}`}>
-                                                    {todo.category === 'calendar'
-                                                        ? '📅 캘린더'
-                                                        : todo.category === 'obsidian'
-                                                            ? '📝 Obsidian'
-                                                            : todo.category === 'notion'
-                                                                ? '📝 Notion'
-                                                                : '📝 메모'}
-                                                </span>
-                                            )}
-                                            <span className="todo-text" onClick={() => user && toggleTodo(todo)}>
-                                                {todo.text}
-                                            </span>
-                                        </div>
+										<div className="todo-main-row">
+											{todo.category && todo.category !== 'todo' && (
+												<span className={`badge badge-${todo.category}`}>
+													{todo.category === 'calendar'
+														? '📅 캘린더'
+														: todo.category === 'email'
+															? '✉️ 이메일'
+															: todo.category === 'obsidian'
+																? '📝 Obsidian'
+																: todo.category === 'notion'
+																	? '📝 Notion'
+																	: '📝 메모'}
+												</span>
+											)}
+											<span className="todo-text" onClick={() => user && toggleTodo(todo)}>
+												{todo.text}
+											</span>
+										</div>
                                         {todo.aiProcessed === false && user && (
                                             <span className="ai-processing">✨ AI 분석 중...</span>
                                         )}
@@ -1110,9 +1175,11 @@ function App() {
                                 <div className="export-destination-list">
                                     {[
                                         { key: 'obsidian', label: '📝 Obsidian' },
-                                        { key: 'notion', label: '📝 Notion' },
-                                        { key: 'clipboard', label: '📋 Clipboard' },
-                                    ].map((option) => {
+										{ key: 'notion', label: '📝 Notion' },
+										{ key: 'calendar', label: '📅 Google Calendar' },
+										{ key: 'email', label: '✉️ Email' },
+										{ key: 'clipboard', label: '📋 Clipboard' },
+									].map((option) => {
                                         const suggested = getSuggestedDestinations(exportModalTodo.tags || [])
                                         const isSuggested = suggested.includes(option.key)
                                         const isChecked = exportSelectedDestinations.includes(option.key)

@@ -31,10 +31,11 @@ related_docs:
 
 ---
 
-## 2) 저장 위치 원칙 (Git에 남게)
+## 2) 저장 위치 원칙 (Git 연동 일원화)
 
-- **VTL/VSOP 저장 위치(원칙)**: `Outputs/`
-  - 이유: Chat History/Transcript는 Git에 자동 포함되지 않음 → 장기 보존은 `Outputs/`가 핵심
+- **VTL/VSOP 저장 위치(원칙)**: `Docs/`
+  - 이유: 모든 문서는 Git 버전 관리와 완벽하게 추적되는 `Docs/` 폴더 내에 일원화하여 보존합니다.
+  - OneDrive Obsidian 연동: `Docs/`에 작성된 마스터 파일들은 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 통해 OneDrive Obsidian Vault(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\AliaBot_Docs\`)로 미러링하여 관리합니다.
 - **스크린샷 저장 위치(권장)**: `Docs/Screenshots/YYYYMM/`
   - 파일명 규칙은 `Docs/Session_SOP_Guidelines.md` 참고
 
@@ -43,7 +44,8 @@ related_docs:
 ## 3) 생성 트리거(언제 문서를 추가하나)
 
 **시간(세션 종료 시각)이 아니라, 주제·단원·Phase가 “완전히 끝났을 때”** 생성합니다.  
-(사용자 확인 2026-06-02: 매 작업 종료마다가 아니라 **기능/주제 단위 완료** 기준)
+또한, **기존 작업의 최종 종결 및 확인 시점에는 발견된 모든 개선사항이나 보완사항을 반영한 VTL 및 SOP를 신규 생성하거나 기존 문서를 완전하게 보완**하는 작업을 필수적으로 수행합니다.
+(사용자 확인 2026-06-02/2026-06-14: 매 작업 종료마다가 아니라 **기능/주제 단위 완료 및 최종 보완 종결** 기준)
 
 `Docs/Session_SOP_Guidelines.md`의 운영 원칙을 따르되, 아래를 우선합니다.
 
@@ -52,20 +54,21 @@ related_docs:
 | **Phase·주제·기능 단위 완료** | VTL | 과정·원인·해결·스크린샷 |
 | **검증·설정·배포 절차가 확정됨** | VSOP | 재현 가능한 Step-by-Step |
 | **주제 변경 + 이전 주제 마무리** | VTL (+ 필요 시 VSOP) | 이전 주제 VTL을 먼저 닫고 새 주제 시작 |
+| **최종 검증 및 트러블슈팅 종결** | VTL/SOP 보완 및 신규 반영 | 오늘 세션의 최종 개선사항 보완 |
 | **트러블슈팅 해결** | 해당 주제 VTL에 Issue 섹션 | 별도 “시간” 트리거 없음 |
 
 **하지 않는 것:** 채팅만 닫았다고 VTL/VSOP 자동 생성 (맥락 없는 시간 기준 X)
 
 ---
 
-## 4) 파일명 규칙 (Outputs)
+## 4) 파일명 규칙 (Docs)
 
 아래 패턴을 권장합니다(레포에 이미 존재하는 패턴 기준).
 
-- **VTL**: `Outputs/YYYYMMDD_프로젝트_주제(or Phase)_..._VTL.md`
-  - 예: `Outputs/20260601_AliaBot_Phase52_LocalVerify_VTL.md`
-- **VSOP**: `Outputs/YYYYMMDD_프로젝트_주제(or Phase)_..._VSOP.md`
-  - 예: `Outputs/20260601_AliaBot_Phase52_LocalVerify_VSOP.md`
+- **VTL**: `Docs/YYYYMMDD_프로젝트_주제(or Phase)_..._VTL.md`
+  - 예: `Docs/20260614_AliaBot_Phase5_Serverless_Gemini_Debug_VTL.md`
+- **VSOP**: `Docs/YYYYMMDD_프로젝트_주제(or Phase)_..._VSOP.md`
+  - 예: `Docs/20260614_AliaBot_Phase5_Serverless_Gemini_Setup_SOP.md`
 
 ---
 
@@ -168,4 +171,26 @@ summary: "비개발자도 따라할 수 있는 절차 요약"
 
 - **Chat as editor tabs**를 켜면 대화가 에디터 탭으로 열려 관리가 편하지만, 문서 보존은 별개입니다.
 - 중요한 결론/절차는 반드시 **VTL/VSOP로 outputs에 남기기**(이 문서의 핵심 원칙).
+
+---
+
+## 10) 상세화 및 가시성 원칙 (Detailing & Visibility Principle)
+
+비개발자나 처음 접하는 작업자가 보더라도 프로젝트의 원리를 파악하고 절차를 정상 재현할 수 있도록 다음과 같은 상세 기준을 준수하여 작성해야 합니다.
+
+### 10.1 물리 절대 경로의 의도적 명시
+- 유실 복구나 설정 변경의 대상이 되는 파일과 폴더의 윈도우 파일 시스템 실제 절대 경로를 생략 없이 기술합니다.
+- 예시:
+  - `.pb` 대화 파일: `C:\Users\eugene\.gemini\antigravity\conversations\<Session-UUID>.pb`
+  - 에이전트 대화 로그: `C:\Users\eugene\.gemini\antigravity\brain\<Session-UUID>\.system_generated\logs\overview.txt`
+
+### 10.2 트러블슈팅 실패 내역의 원리 서술
+- 단순히 "백그라운드 스크립트 실행에 실패함"과 같이 요약하지 말고, 왜 실패했는지 윈도우 OS 수준의 원리(예: `Job Object`에 의한 하위 프로세스 강제 종료 메커니즘)를 상세하게 설명하여 실패의 구조적 필연성을 밝힙니다.
+
+### 10.3 원문 명령어 스니펫(Snippet) 제공
+- 따라 해야 하는 터미널 명령어는 생략이나 축약 없이 비개발자가 복사-붙여넣기(`Copy & Paste`)하여 바로 쓸 수 있는 원문 형태로 포함합니다.
+- 예시: `attrib +r "C:\Users\eugene\.gemini\antigravity\conversations\<UUID>.pb"`
+
+### 10.4 시각적 도식화 (Mermaid 활용)
+- 데이터의 이동 경로, 프로세스의 순서, 혹은 복원 아키텍처 흐름을 파악하기 쉽도록 마크다운 내에 Mermaid 시퀀스 다이어그램이나 플로우차트를 포함하여 시각적 직관성을 제공합니다.
 

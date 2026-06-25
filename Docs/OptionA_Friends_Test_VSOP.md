@@ -93,7 +93,9 @@ Vercel Dashboard → Project → Settings → Environment Variables:
 
 1. `https://aliabot.vercel.app` 접속
 2. **초대된 Google 계정**으로 로그인
-3. Settings에 Gemini 키 **입력 불필요** (AI 자동)
+3. **Settings(설정) 내 Gemini API Key 공백 유지 (호스트 대리 호출 강제)**:
+   - 사용자는 자신의 개별 API 키를 설정창에 입력(BYOK)하지 않고 **빈칸(Empty)으로 비워두어야 합니다.**
+   - 키가 비어 있을 때만 앱이 Firebase Cloud Functions 백엔드를 트리거하여 호스트(개발자)의 대표 API 키로 안전하게 **대리 호출(Proxy Call)**을 수행하도록 연동되어 있습니다.
 4. PWA 업데이트 시: 기존 아이콘 삭제 → 재설치
 
 ---

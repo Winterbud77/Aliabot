@@ -47,12 +47,18 @@
 
 ## 3. 🚨 Gemini API 연동 핵심 규칙
 
-1. **서버리스 API Key 사용**:
+1. **Host-managed API Proxy (호스트 대리 호출) 기본 원칙**:
+   - **아키텍처 정의**: 지인 테스트 기간 동안 일반 사용자들은 자신의 API 키를 직접 입력하는 **BYOK (브라우저 직접 호출) 방식을 사용하지 않는 것**을 기본 설계 정책으로 삼습니다.
+   - **작동 방식**: 사용자의 클라이언트 설정 창 내 `Gemini API Key` 입력 칸은 항상 **비워두는 상태(Empty)**로 가동됩니다. 이 경우 클라이언트는 Firebase Cloud Functions의 프록시 대리 호출 함수(`analyzeMemoWithGemini`)를 트리거하며, 서버는 Firebase Secret Manager에 저장된 호스트(개발자)의 대표 Gemini API Key를 로드하여 동작합니다.
+   - **Blaze 요금제 필수성**: Firebase 프로젝트가 **Blaze (종량제 요금제)** 상태이므로 구글 외부의 Gemini API 게이트웨이로 나가는 트래픽이 차단되지 않아 지인들도 호스트의 API 키로 요약 서비스를 정상 공유받을 수 있습니다.
+2. **서버리스 API Key 보안**:
    - Cloud Functions 서버가 대리 통신할 때 구글 API 게이트웨이의 401 차단을 막으려면, 구글 AI Studio의 `+ 프로젝트 만들기`를 통해 **보안 제한이 걸려있지 않은 완전히 독립된 임시 프로젝트 하에서 `AQ.Ab8R...` 키를 발급받아 등록**해야 합니다.
-2. **서버 캐시 지연 해결**:
+3. **서버 캐시 지연 해결**:
    - `firebase functions:secrets:set GEMINI_API_KEY`를 통해 키를 교체한 후에는, 반드시 `functions/index.js`에 의미 없는 주석 등의 소스 변경을 주어 강제로 `firebase deploy --only functions` 함으로써 인스턴스를 콜드 부팅(Cold Start)해야 정상 반영됩니다.
-3. **클라이언트 Auto-Backfill 연동**:
-   - 프론트엔드(`App.jsx`)에서 태그가 없는 메모를 스캔하여 백필할 때도, 로컬에 저장된 사용자 키(`apiKeys.gemini`)가 있으면 서버 프록시 호출보다 우선하여 파라미터로 넘겨주도록 코딩해야 합니다.
+4. **클라이언트 Auto-Backfill 연동 주의**:
+   - 프론트엔드(`App.jsx`)에서 백필이 작동할 때, 사용자가 개별 키(`apiKeys.gemini`)를 기입하지 않은 비어 있는 환경에서도 백엔드 서버 함수로 원활하게 Proxy 요청을 전달하여 대리 처리가 문제없이 수행되도록 보장되어야 합니다.
+5. **대시보드 스프레드시트 뷰 및 CSV 파일 내보내기 (Phase 5.5)**:
+   - 모바일 비서 레이아웃 외에 PC 대형 화면을 지원하기 위한 테이블 격자(Grid) 형태의 표 보기 전환 토글 스위치 및 Firestore 내 전체 누적 메모를 `.csv` 파일로 변환하여 다운로드받는 브라우저 로컬 내보내기 기능을 향후 탑재합니다.
 
 ---
 

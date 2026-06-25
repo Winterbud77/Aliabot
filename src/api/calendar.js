@@ -1,3 +1,5 @@
+import { extractDateFromText, getSeoulISOStringFromDate } from '../utils/dateParser';
+
 /**
  * Google Calendar API 연동 모듈 (Phase 5.4)
  */
@@ -18,28 +20,43 @@ export async function insertCalendarEvent(accessToken, eventDetails) {
         return { success: false, error: '구글 로그인 액세스 토큰이 없습니다. 다시 로그인해 주세요.' };
     }
 
-    const { summary, location = '', description = '', startDateTime, endDateTime } = eventDetails;
+    const summary = eventDetails.summary;
+    const location = eventDetails.location || '';
+    const description = eventDetails.description || '';
+
+    // AI의 JSON 응답 키 불일치 오차 대비 유연한 날짜 매핑 (startDateTime, startDate, start 등)
+    let startIso = eventDetails.startDateTime || eventDetails.startDate || eventDetails.start;
+    let endIso = eventDetails.endDateTime || eventDetails.endDate || eventDetails.end;
+
+    // AI 파싱 실패 시, 원본 메모 텍스트(description)로부터 스마트 정적 날짜 파싱 시도
+    if (!startIso && description) {
+        const extractedDate = extractDateFromText(description);
+        if (extractedDate) {
+            startIso = getSeoulISOStringFromDate(extractedDate);
+            const oneHourLater = new Date(extractedDate.getTime() + 60 * 60 * 1000);
+            endIso = getSeoulISOStringFromDate(oneHourLater);
+            console.log('[Calendar Fallback] 스마트 폴백으로 날짜 추출 성공:', startIso);
+        }
+    }
 
     if (!summary || summary.trim() === '') {
         return { success: false, error: '일정 제목(summary)은 필수 항목입니다.' };
     }
 
-    // 기본 시간대 설정 (서울)
-    const timeZone = 'Asia/Seoul';
-
-    // 시작/종료 시간이 누락된 경우 기본값 처리 (현재 시간 기준)
-    let startIso = startDateTime;
-    let endIso = endDateTime;
-
     if (!startIso) {
         const now = new Date();
-        // 타임존 오프셋 반영한 ISO 포맷 생성 (+09:00)
-        startIso = getSeoulISOString(now);
+        startIso = getSeoulISOStringFromDate(now);
     }
     if (!endIso) {
-        const now = new Date();
-        const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000); // 1시간 뒤
-        endIso = getSeoulISOString(oneHourLater);
+        try {
+            const startDateObj = new Date(startIso);
+            const oneHourLater = new Date(startDateObj.getTime() + 60 * 60 * 1000);
+            endIso = getSeoulISOStringFromDate(oneHourLater);
+        } catch (e) {
+            const now = new Date();
+            const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+            endIso = getSeoulISOStringFromDate(oneHourLater);
+        }
     }
 
     const requestBody = {
@@ -48,11 +65,11 @@ export async function insertCalendarEvent(accessToken, eventDetails) {
         description: description.trim(),
         start: {
             dateTime: startIso,
-            timeZone: timeZone,
+            timeZone: 'Asia/Seoul',
         },
         end: {
             dateTime: endIso,
-            timeZone: timeZone,
+            timeZone: 'Asia/Seoul',
         },
     };
 
@@ -81,28 +98,4 @@ export async function insertCalendarEvent(accessToken, eventDetails) {
         console.error('[Google Calendar Integration Failed]', error);
         return { success: false, error: error.message || '알 수 없는 네트워크 오류' };
     }
-}
-
-/**
- * 로컬 Date 객체를 한국 표준시(+09:00) 기준 ISO 8601 포맷으로 변환합니다.
- * @param {Date} date 
- * @returns {string} YYYY-MM-DDTHH:mm:ss+09:00
- */
-function getSeoulISOString(date) {
-    const tzOffset = 9 * 60; // Korea is UTC+9 (minutes)
-    const localTime = date.getTime();
-    const localOffset = date.getTimezoneOffset(); // in minutes
-    // 한국 시간 기준으로 보정된 일시
-    const korDate = new Date(localTime + (tzOffset + localOffset) * 60 * 1000);
-
-    const pad = (n) => String(n).padStart(2, '0');
-    
-    const yyyy = korDate.getFullYear();
-    const mm = pad(korDate.getMonth() + 1);
-    const dd = pad(korDate.getDate());
-    const hh = pad(korDate.getHours());
-    const min = pad(korDate.getMinutes());
-    const ss = pad(korDate.getSeconds());
-
-    return `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}+09:00`;
 }

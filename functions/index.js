@@ -167,5 +167,4 @@ exports.sendEmailViaFunctions = onCall(
 // });
 
 // Force redeployment to clear instance caching of GEMINI_API_KEY and EMAIL_API_KEY
-
-
+// Redeployed on: 2026-06-25T05:56:00Z (Fixed getSeoulNowISOString comment syntax)

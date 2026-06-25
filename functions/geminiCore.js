@@ -42,6 +42,9 @@ function extractJsonFromGeminiText(rawText) {
 }
 
 /**
+ * 한국 표준시(KST) 기준 ISO 8601 시간을 반환하는 헬퍼 함수
+ * @returns {string} YYYY-MM-DDTHH:mm:ss+09:00
+ */
 function getSeoulNowISOString() {
   const date = new Date();
   const tzOffset = 9 * 60;

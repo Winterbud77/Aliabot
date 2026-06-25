@@ -656,7 +656,8 @@ function App() {
         // 1) 외부 시스템 전송 (순서대로 처리: 실패 시 즉시 중단)
         for (const destination of destinations) {
             if (destination === 'obsidian') {
-                const result = await sendToObsidian(todo.text)
+                const eventDetails = todo.metadata?.parsedEvent || null
+                const result = await sendToObsidian(todo.text, '', eventDetails)
                 if (!result?.success) {
                     alert(
                         `❌ 옵시디언 전송 실패: ${result?.error || '알 수 없는 오류'}\n` +
@@ -685,10 +686,12 @@ function App() {
                 }
                 
                 // metadata.parsedEvent 또는 fallback 설정
-                const eventDetails = todo.metadata?.parsedEvent || {
-                    summary: todo.summary || todo.text.slice(0, 50),
-                    description: todo.text
-                }
+                const eventDetails = todo.metadata?.parsedEvent
+                    ? { ...todo.metadata.parsedEvent, description: todo.metadata.parsedEvent.description || todo.text }
+                    : {
+                        summary: todo.summary || todo.text.slice(0, 50),
+                        description: todo.text
+                    }
                 
                 const result = await insertCalendarEvent(googleAccessToken, eventDetails)
                 if (!result?.success) {
@@ -926,18 +929,38 @@ function App() {
                                     /* 일반 표시 모드 */
                                     <>
 										<div className="todo-main-row">
-											{todo.category && todo.category !== 'todo' && (
-												<span className={`badge badge-${todo.category}`}>
-													{todo.category === 'calendar'
-														? '📅 캘린더'
-														: todo.category === 'email'
-															? '✉️ 이메일'
-															: todo.category === 'obsidian'
-																? '📝 Obsidian'
-																: todo.category === 'notion'
-																	? '📝 Notion'
-																	: '📝 메모'}
-												</span>
+											{todo.destinations && todo.destinations.length > 0 ? (
+												<div className="todo-badges-container" style={{ display: 'inline-flex', gap: '4px', marginRight: '4px', flexWrap: 'wrap' }}>
+													{todo.destinations.map((dest) => (
+														<span key={dest} className={`badge badge-${dest}`} style={{ margin: '0' }}>
+															{dest === 'calendar'
+																? '📅 캘린더'
+																: dest === 'email'
+																	? '✉️ 이메일'
+																	: dest === 'obsidian'
+																		? '📝 Obsidian'
+																		: dest === 'notion'
+																			? '📝 Notion'
+																			: dest === 'clipboard'
+																				? '📋 클립보드'
+																				: `📝 ${dest}`}
+														</span>
+													))}
+												</div>
+											) : (
+												todo.category && todo.category !== 'todo' && (
+													<span className={`badge badge-${todo.category}`}>
+														{todo.category === 'calendar'
+															? '📅 캘린더'
+															: todo.category === 'email'
+																? '✉️ 이메일'
+																: todo.category === 'obsidian'
+																	? '📝 Obsidian'
+																	: todo.category === 'notion'
+																		? '📝 Notion'
+																		: '📝 메모'}
+													</span>
+												)
 											)}
 											<span className="todo-text" onClick={() => user && toggleTodo(todo)}>
 												{todo.text}

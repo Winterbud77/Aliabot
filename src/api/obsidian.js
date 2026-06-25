@@ -11,11 +11,43 @@ const OBSIDIAN_PORT = 27123; // Non-encrypted HTTP 포트
 const OBSIDIAN_URL = `http://127.0.0.1:${OBSIDIAN_PORT}`;
 const API_KEY = "bf62ace3c70a4c515f16399bba09350ebeefaad6b9055a12c310df3143af4710";
 
-export const sendToObsidian = async (text, fileName = '') => {
-    // 파일명이 없으면 오늘 날짜와 시간 기반으로 생성
+import { extractDateFromText } from '../utils/dateParser';
+
+export const sendToObsidian = async (text, fileName = '', eventDetails = null) => {
+    // 파일명이 없으면 목표 날짜 또는 오늘 날짜와 시간 기반으로 생성
     if (!fileName) {
+        let dateObj = new Date();
+        
+        // 1. AI 파싱 정보가 있는 경우 해당 시작 날짜 사용
+        if (eventDetails && (eventDetails.startDateTime || eventDetails.startDate || eventDetails.start)) {
+            const isoStr = eventDetails.startDateTime || eventDetails.startDate || eventDetails.start;
+            try {
+                const parsedDate = new Date(isoStr);
+                if (!isNaN(parsedDate.getTime())) {
+                    dateObj = parsedDate;
+                }
+            } catch (e) {
+                console.warn('[Obsidian] startDateTime 파싱 실패:', e);
+            }
+        } else {
+            // 2. AI 파싱 정보가 없는 경우 텍스트에서 날짜 직접 정적 파싱 시도 (스마트 폴백)
+            const extractedDate = extractDateFromText(text);
+            if (extractedDate) {
+                dateObj = extractedDate;
+            }
+        }
+
+        const yyyy = dateObj.getFullYear();
+        const mm = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+        const dd = dateObj.getDate().toString().padStart(2, '0');
+        
+        // 고유성을 유지하기 위해 전송 시점의 시분초를 덧붙임
         const now = new Date();
-        fileName = `Inbox/Siders_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours()}${now.getMinutes()}${now.getSeconds()}.md`;
+        const hh = now.getHours().toString().padStart(2, '0');
+        const min = now.getMinutes().toString().padStart(2, '0');
+        const ss = now.getSeconds().toString().padStart(2, '0');
+        
+        fileName = `Inbox/Siders_${yyyy}${mm}${dd}_${hh}${min}${ss}.md`;
     } else {
         fileName = `Inbox/${fileName}.md`;
     }

@@ -116,7 +116,7 @@ Work01_Anti/
 #### 📂 OneDrive Obsidian Vault 하이브리드 미러링 동기화 구조
 로컬 C드라이브(`C:\Users\eugene\Projects\Work01_Anti\Docs`)와 OneDrive 동기화 영역(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS`)의 동기화 불일치 및 모바일 공백 문제를 해결하기 위해 아래 구조를 유지합니다:
 1. **마스터 원본**: 로컬 프로젝트의 `Docs/` 폴더가 원본 마스터입니다. 모든 작성 및 1차 수정은 이곳에서 일어납니다.
-2. **자동 미러링**: 세션 종료 시 또는 산출물 생성 시, 원클릭 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 실행하여 `Docs/` 내부의 마크다운 파일을 Obsidian Vault 하위의 `AliaBot_Docs/` 폴더로 자동 복사 미러링합니다.
+2. **자동 미러링**: 세션 종료 시 또는 산출물 생성 시, 원클릭 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 실행하여 `Docs/` 내부의 마크다운 파일을 Obsidian Vault 하위의 `100 Source/AliaBot_Docs/` 폴더로 자동 복사 미러링합니다.
 3. **모바일 동기화**: 물리적 복사본이 OneDrive 영역 내에 존재하므로, 모바일 및 태블릿의 Obsidian 앱에서도 정상적으로 문서 조회가 가능합니다.
 4. **Rename 대책**: 문서 최상단 Frontmatter에 고유 식별 명칭(aliases 또는 uuid)을 포함하여 이름 변경 시의 링크 깨짐을 방지합니다.
 

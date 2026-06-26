@@ -36,7 +36,7 @@ summary: "비개발자 사용자가 새로운 프로젝트(예: Tomato Product a
 * **수정 전 (AliaBot 기준)**:
   ```powershell
   $Src = "C:\Users\eugene\Projects\Work01_Anti\Docs"
-  $Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\AliaBot_Docs"
+  $Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\AliaBot_Docs"
   ```
 * **수정 후 (Tomato Survey 기준 예시)**:
   ```powershell

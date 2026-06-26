@@ -8,7 +8,7 @@ description: 표준화된 문제 해결 SOP 및 초상세 기술 로그(TechLog_
 
 ## 1. 파일 명명 및 저장 위치 규칙
 - **저장 위치:** 프로젝트의 `Docs/` 폴더 (원본 마스터 저장소)
-  - *동기화*: 작성 완료 후 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 통해 OneDrive Obsidian Vault(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\AliaBot_Docs\`)로 미러링하여 모바일 동기화 및 중복성 문제를 동시에 해결합니다.
+  - *동기화*: 작성 완료 후 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 통해 OneDrive Obsidian Vault(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\AliaBot_Docs\`)로 미러링하여 모바일 동기화 및 중복성 문제를 동시에 해결합니다.
 - **명명 규칙:** `YYYYMMDD_[주제]_[문서유형]_[AI모델명]_Antigravity.md`
   - 예: `Docs/20260408_디스크정리_TechLog_Gemini_Antigravity.md`
   - 예: `Docs/20260408_디스크정리_SOP_Gemini_Antigravity.md`

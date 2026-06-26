@@ -35,7 +35,7 @@ related_docs:
 
 - **VTL/VSOP 저장 위치(원칙)**: `Docs/`
   - 이유: 모든 문서는 Git 버전 관리와 완벽하게 추적되는 `Docs/` 폴더 내에 일원화하여 보존합니다.
-  - OneDrive Obsidian 연동: `Docs/`에 작성된 마스터 파일들은 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 통해 OneDrive Obsidian Vault(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\AliaBot_Docs\`)로 미러링하여 관리합니다.
+  - OneDrive Obsidian 연동: `Docs/`에 작성된 마스터 파일들은 동기화 스크립트(`Docs/sync-to-obsidian.ps1`)를 통해 OneDrive Obsidian Vault(`C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\AliaBot_Docs\`)로 미러링하여 관리합니다.
 - **스크린샷 저장 위치(권장)**: `Docs/Screenshots/YYYYMM/`
   - 파일명 규칙은 `Docs/Session_SOP_Guidelines.md` 참고
 

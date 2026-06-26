@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Continue"
 
 $Src = "C:\Users\eugene\Projects\Work01_Anti\Docs"
-$Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\AliaBot_Docs"
+$Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\AliaBot_Docs"
 
 Write-Host "Sync Starting..."
 Write-Host "Source: $Src"

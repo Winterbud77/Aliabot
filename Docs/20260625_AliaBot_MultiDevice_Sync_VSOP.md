@@ -34,6 +34,21 @@ tags: [sop, obsidian, sync, onedrive, multi-device, backup]
 2. **동기화 지연 대기**:
    - 랩탑에서 메모를 편집한 뒤 컴퓨터를 덮기 전, 작업 표시줄의 원드라이브 아이콘에 **"동기화 완료"** 표시가 뜨는 것을 반드시 확인합니다.
    - 데스크탑을 켤 때는 원드라이브가 클라우드로부터 최신 메모를 다 다운로드할 때까지 10~20초 대기 후 옵시디언을 실행합니다.
+3. **볼트 최상위 `.gitignore` 배치 (잠김 방지 필수 조치)**:
+   - 원드라이브 내의 옵시디언 볼트에 대고 직접 또는 간접적으로 Git 버전 관리를 결합하여 사용하게 될 경우, 옵시디언이 실시간으로 갱신하는 임시 상태 파일들을 추적 목록에서 격리하기 위해 볼트 최상위(Root) 폴더에 반드시 `.gitignore` 파일을 배치합니다.
+   - 외부 윈도우 메모장(Notepad)을 통해 규칙을 작성하고 저장 시 파일 형식을 `모든 파일 (*.*)`로 선택한 뒤 파일명을 `.gitignore`로 저장해 둡니다:
+     ```text
+     .obsidian/workspace.json
+     .obsidian/workspace-mobile.json
+     .obsidian/cache/
+     .trash/
+     ```
+4. **미러링 폴더의 '100 Source' 하위 집중화**:
+   - 옵시디언 파일 트리의 정돈을 위해 모든 미러링 문서 복사본들의 종착지를 `100 Source/` 폴더 아래로 이관합니다.
+   - 랩탑 `sync-to-obsidian.ps1` `$Dst` 변수:
+     `$Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\AliaBot_Docs"`
+   - 데스크탑 `sync-to-obsidian.ps1` `$Dst` 변수:
+     `$Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\Greenhouse_Docs"`
 
 ---
 

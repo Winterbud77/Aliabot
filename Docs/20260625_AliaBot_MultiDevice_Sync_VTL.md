@@ -60,3 +60,11 @@ flowchart TD
 
 ### 4) [MODIFY] 다중 뱃지 출력 구현 (`src/App.jsx`)
 * 단일 카테고리만 렌더링하던 931라인의 뱃지 출력 영역을 `todo.destinations` 배열을 순회하여 `[📅 캘린더] [📝 Obsidian]` 등이 가로로 모두 출력되도록 마크업을 동적 맵핑 구조로 갱신했습니다.
+
+### 5) [MODIFY] `sync-to-obsidian.ps1` 미러링 경로 이전
+* **역할**: 알파벳 순 정렬 혼잡성을 해결하기 위해 옵시디언 루트에 생성되던 `AliaBot_Docs` 폴더를 `100 Source/AliaBot_Docs` 로 실제 물리 이전하였습니다.
+* **조치**: 파워쉘 동기화 스크립트의 대상 경로 변수를 `$Dst = "C:\Users\eugene\OneDrive\Obsidian\Winterbud-03MS\100 Source\AliaBot_Docs"` 로 변경하고, 프로젝트 내부의 모든 가이드라인 문서 내 예시 경로를 일제히 수정 완료했습니다.
+
+### 6) [NEW] 원드라이브 옵시디언 볼트 `.gitignore` 필터 수립
+* **역할**: 옵시디언이 무수히 갱신하는 임시 화면 상태 파일(`.obsidian/workspace.json`)과 캐시가 깃허브 추적 대상에 묶여 원드라이브 파일 잠김을 유발하는 노이즈를 근본적으로 제외했습니다.
+* **조치**: 닷파일(`.gitignore`)을 외부 메모장으로 생성하여 옵시디언 볼트 최상위에 직접 배치하고 예외 규칙을 정의했습니다.

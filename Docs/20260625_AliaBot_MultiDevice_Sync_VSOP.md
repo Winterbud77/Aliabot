@@ -9,6 +9,8 @@ subcategory: Sync
 tags: [sop, obsidian, sync, onedrive, multi-device, backup]
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 > **목적 (Purpose)**:

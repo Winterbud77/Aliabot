@@ -11,6 +11,8 @@ workspace: Winterbud-03MS
 summary: "React 웹앱을 PWA로 만들 때 'Install' 버튼이 나타나지 않는 근본 원인(아이콘 누락)을 해결하고, 터미널 복사 에러를 우회하는 Node.js 스크립트 작성법을 안내합니다."
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 📋 [SOP] Vite+React PWA 필수 에셋 적용 및 설치 활성화 지침

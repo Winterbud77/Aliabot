@@ -25,6 +25,8 @@
   * 리액트 `useEffect` 기반의 독립 **10초 주기 AI 백필 폴러(AI Backfill Poller) 훅**을 아키텍처로 도입하여, 비동기 기아(Starvation)를 해결하고 타임스탬프(`createdAt`)가 유실된 구형 문서까지 안전하게 복원 치료하는 파이프라인 정착 완료.
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ### 🗓️ Phase 5.8: 수신 이메일(Inbound Email) 웹훅 처리 및 실시간 AI 디스패치 (다음 세션 주 목표)

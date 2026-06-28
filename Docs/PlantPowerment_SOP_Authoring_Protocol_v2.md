@@ -18,6 +18,8 @@ SOP =
 5. TechLog Link
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 2. Visual Context

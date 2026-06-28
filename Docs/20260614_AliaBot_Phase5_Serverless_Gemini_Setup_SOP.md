@@ -11,6 +11,8 @@ related_vtl: Outputs/20260614_AliaBot_Phase5_Serverless_Gemini_Debug_VTL.md
 summary: "구글 AI Studio 독립 프로젝트 개설, 서버 시크릿 주입, 서비스워커 및 로컬 개발서버 핫리로드 문제 해결 가이드"
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 📋 VSOP: Serverless Gemini API 및 PWA 캐시 동기화 복구 절차

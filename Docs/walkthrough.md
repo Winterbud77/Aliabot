@@ -16,6 +16,8 @@
 - **확인 방법**: 브라우저(또는 PWA 앱)에서 `F12`를 눌러 개발자 도구를 연 뒤, **[Application] -> [Local Storage]** 탭을 클릭하면 `todos`라는 이름으로 여러분의 데이터가 들어있는 것을 확인할 수 있습니다.
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 📱 모바일 사용 및 향후 계획 (Mobile & Future)

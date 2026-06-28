@@ -16,6 +16,8 @@
    - 단, 주요 컴퓨터 키워드나 명사 용어는 영어 원문을 병기하되, 생소할 수 있는 전문 용어는 괄호 안에 한글 뜻을 함께 적어 비개발자 아키텍트가 완전히 소화할 수 있도록 배려하십시오.
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 2. 🏗️ 기술 스택 및 데이터베이스 구조 (Technical Stack)

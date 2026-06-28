@@ -9,6 +9,8 @@ subcategory: Phase5/Integration
 tags: [vtl, debugging, date-parsing, multi-badge, react, fallback]
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 > **본 기술로그(VTL)의 목적**:

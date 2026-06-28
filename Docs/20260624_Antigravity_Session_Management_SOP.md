@@ -10,6 +10,8 @@ related_docs:
   - Docs/20260621_AliaBot_Convo_Session_Restore_VSOP.md
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 📋 SOP: Antigravity 대화 세션 분류 및 전역 설정 관리 절차서

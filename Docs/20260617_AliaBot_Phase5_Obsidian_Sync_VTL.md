@@ -16,6 +16,8 @@ related_docs:
   - Docs/VTL_VSOP_Writing_Guide.md
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # TechLog: AliaBot Phase5 Obsidian Sync VTL

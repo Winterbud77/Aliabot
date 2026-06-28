@@ -11,6 +11,8 @@ workspace: Winterbud-03MS
 summary: "단편적인 해결책을 넘어, VS Code의 5대 핵심 화면 영역(Activity Bar, Primary/Secondary Sidebar 등)의 명칭과 원리를 이해하고, 다중 AI 에이전트 관제탑을 스스로 세팅할 수 있도록 시각화하여 정리한 심층 가이드입니다."
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 🖥️ [TechLog] VS Code 및 Antigravity UI 구조 이해와 레이아웃 관리 가이드

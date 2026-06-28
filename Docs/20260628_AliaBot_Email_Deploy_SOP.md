@@ -12,6 +12,8 @@
 * **Interactive Prompt Entry (대화형 프롬프트 주입)**: Firebase CLI는 명령어 인자(Arguments)로 비밀키 값을 직접 넘기는 대신, 명령어를 입력한 뒤 뒤따라오는 숨김 입력 프롬프트를 통해 값을 받아 처리함으로써 보안 위생(Security Hygiene)을 지킵니다.
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 2. 📋 1단계: 메일 API Key 발급 및 준비

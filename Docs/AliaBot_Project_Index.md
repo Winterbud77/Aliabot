@@ -12,6 +12,8 @@
 * [🚀 generate-sop (SOP 자동 생성 가이드)]([[generate-sop]])
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 🛠️ 2. 최근 작업 기술 로그 및 절차서 (Phase 5.x)

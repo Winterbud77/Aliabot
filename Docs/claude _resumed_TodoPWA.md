@@ -73,6 +73,8 @@
   어떻게 진행할까요?
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
   ─────────────────────────────────────────────────
   📊 bkit Feature Usage

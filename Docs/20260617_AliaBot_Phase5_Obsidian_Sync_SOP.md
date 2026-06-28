@@ -11,6 +11,8 @@ related_vtl: Docs/20260617_AliaBot_Phase5_Obsidian_Sync_VTL.md
 summary: "비개발자 사용자가 새로운 프로젝트(예: Tomato Product auto survey 등)를 진행할 때, 프로젝트의 Docs 폴더 내 문서들을 OneDrive Obsidian Vault로 안전하게 실시간 미러링 동기화하기 위한 파워쉘 스크립트 설정 및 실행 절차"
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # VSOP: Obsidian Sync — OneDrive 기반 다중 프로젝트 문서 동기화 표준 절차

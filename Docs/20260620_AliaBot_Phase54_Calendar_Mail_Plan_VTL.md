@@ -10,6 +10,8 @@ ai_model: Gemini 3.5 Pro (Antigravity)
 summary: "Google Calendar API 및 Email 발송 API의 연동 아키텍처 설계, 구글 OAuth2 Scope 획득 기법, 서버리스 이메일 발송을 위한 구조적 정의 및 ToDo List 수립 (구현 완료)"
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 🏗️ AliaBot Phase 5.4 — Google Calendar 및 Email 채널 확장 아키텍처 설계서

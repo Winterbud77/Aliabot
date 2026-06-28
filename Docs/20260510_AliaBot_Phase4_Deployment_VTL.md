@@ -14,6 +14,8 @@
   - 전 세계적(영어권, 한국어권)으로 발음하기 쉬운 모음 구조.
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 2. 🚨 트러블슈팅: Vercel CLI 배포 실패와 극복 (핵심 기록)

@@ -26,6 +26,8 @@
   4. `link.click()`을 가상으로 실행시켜 다운로드 창을 발생시킨 뒤, 메모리 누수(Memory Leak)를 방지하기 위해 생성된 가상 경로를 즉시 파괴(`URL.revokeObjectURL`)하는 자원 정리 작업을 수행합니다.
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 ## 2. 📝 제안된 변경 사항 (Proposed Changes)

@@ -40,6 +40,8 @@ Claude Code에 지시:
 ---
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 -------------------------
 
 사실 데스크탑의 Greenhouse Data, Data Automation 경우에는 GitHub에는 브랜치 폴더도 만들지 않았어요.

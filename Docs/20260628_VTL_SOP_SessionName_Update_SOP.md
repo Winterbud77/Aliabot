@@ -10,6 +10,8 @@ tags: [sop, metadata, frontmatter, powershell, automator, bulk-update]
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
 summary: "기존에 작성된 모든 VTL/SOP 마크다운 문서 최상단의 YAML 영역에 대화 세션 이름(Session Name)과 세션 UUID(Session ID)를 안전하고 편리하게 일괄 주입하는 표준 절차 및 자동화 스크립트 가이드"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 > **목적 (Purpose)**:

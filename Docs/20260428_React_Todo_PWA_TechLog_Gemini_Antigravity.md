@@ -11,6 +11,8 @@ workspace: Winterbud-03MS
 summary: "Vite+React 프로젝트에 PWA를 적용하는 과정에서 발생한 아이콘 인식 오류와 PowerShell의 && 연산자 문법 에러, 그리고 Node.js 스크립트를 통한 최종 해결 과정을 기록한 초상세 기술 로그입니다."
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 🤖 [TechLog] React Todo PWA 전환 및 파일 복사 에러 수사 기록

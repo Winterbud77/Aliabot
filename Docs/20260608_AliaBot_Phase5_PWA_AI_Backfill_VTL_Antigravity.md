@@ -11,6 +11,8 @@ workspace: Winterbud77/AliaBot
 summary: "PWA 즉각 수명주기 갱신, AI 백필 복구, 리스트 번호 역순 보정 및 모바일 dvh 스크롤 개선 기술로그"
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # TechLog: AliaBot Phase 5.x PWA & AI Backfill VTL

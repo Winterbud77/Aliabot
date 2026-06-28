@@ -2,12 +2,15 @@
 import os
 import re
 import sys
+import argparse
 
-def inject_metadata(session_name, session_id):
+def inject_metadata(session_name, session_id, ai_provider, session_path):
     docs_dir = os.path.dirname(os.path.abspath(__file__))
     print(f"[SEARCH] Target Path: {docs_dir}")
     print(f"[INPUT] Session Name: {session_name}")
     print(f"[INPUT] Session ID: {session_id}")
+    print(f"[INPUT] AI Provider: {ai_provider}")
+    print(f"[INPUT] Session Path: {session_path}")
 
     count_success = 0
     for filename in os.listdir(docs_dir):
@@ -24,26 +27,31 @@ def inject_metadata(session_name, session_id):
             # 개행 문자 LF로 통일
             content = content.replace('\r\n', '\n')
 
-            # 1) session_name 처리
-            if re.search(r'(?m)^session_name:\s*', content):
-                content = re.sub(r'(?m)^session_name:.*$', f'session_name: "{session_name}"', content)
-            else:
-                parts = content.split('---', 2)
-                if len(parts) >= 3:
-                    parts[1] = parts[1].rstrip() + f'\nsession_name: "{session_name}"\n'
-                    content = '---'.join(parts)
-                else:
-                    print(f"[SKIP] Frontmatter not found in: {filename}")
-                    continue
+            # YAML Frontmatter 영역 파싱 (--- 기준 split)
+            parts = content.split('---', 2)
+            if len(parts) < 3:
+                print(f"[SKIP] Frontmatter not found in: {filename}")
+                continue
 
-            # 2) session_id 처리
-            if re.search(r'(?m)^session_id:\s*', content):
-                content = re.sub(r'(?m)^session_id:.*$', f'session_id: "{session_id}"', content)
-            else:
-                parts = content.split('---', 2)
-                if len(parts) >= 3:
-                    parts[1] = parts[1].rstrip() + f'\nsession_id: "{session_id}"\n'
-                    content = '---'.join(parts)
+            yaml_content = parts[1]
+
+            # 헬퍼 함수: 특정 YAML 키가 있으면 업데이트하고, 없으면 신규 추가
+            def update_or_add_yaml(yaml_text, key, value):
+                # 키가 이미 존재하는 경우
+                if re.search(fr'(?m)^{key}:\s*', yaml_text):
+                    return re.sub(fr'(?m)^{key}:.*$', f'{key}: "{value}"', yaml_text)
+                # 존재하지 않는 경우 영역 끝에 추가
+                else:
+                    return yaml_text.rstrip() + f'\n{key}: "{value}"\n'
+
+            # 각 메타데이터 주입 및 업데이트
+            yaml_content = update_or_add_yaml(yaml_content, "session_name", session_name)
+            yaml_content = update_or_add_yaml(yaml_content, "session_id", session_id)
+            yaml_content = update_or_add_yaml(yaml_content, "ai_provider", ai_provider)
+            yaml_content = update_or_add_yaml(yaml_content, "session_path", session_path)
+
+            parts[1] = yaml_content
+            content = '---'.join(parts)
 
             # 파일 쓰기
             try:
@@ -57,11 +65,16 @@ def inject_metadata(session_name, session_id):
     print(f"[FINISH] Bulk update completed. Total updated: {count_success}")
 
 if __name__ == "__main__":
-    s_name = "Restoring Session Test09"
-    s_id = "4a121658-e924-48e9-9455-497feba68766"
+    parser = argparse.ArgumentParser(description="VTL/SOP Multi-Model Metadata Injector")
+    parser.add_argument("name", help="Session Name")
+    parser.add_argument("id", help="Session ID / UUID")
+    parser.add_argument("--provider", default="Antigravity", help="AI Provider (e.g. Antigravity, Claude, ChatGPT, Cursor)")
+    parser.add_argument("--path", default=r"C:\Users\eugene\.gemini\antigravity\brain", help="Physical path to the session storage")
     
-    if len(sys.argv) > 2:
-        s_name = sys.argv[1]
-        s_id = sys.argv[2]
-        
-    inject_metadata(s_name, s_id)
+    # 윈도우 인자 처리 대비 예외 방지
+    args = parser.parse_args()
+    
+    # 역슬래시 이스케이프 방지 처리
+    normalized_path = args.path.replace('\\\\', '\\')
+    
+    inject_metadata(args.name, args.id, args.provider, normalized_path)

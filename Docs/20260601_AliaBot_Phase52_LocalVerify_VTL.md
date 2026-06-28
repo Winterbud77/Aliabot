@@ -16,6 +16,8 @@ related_docs:
   - docs/Session_SOP_Guidelines.md
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # VTL: AliaBot Phase 5.2 — Cursor 로컬 검증

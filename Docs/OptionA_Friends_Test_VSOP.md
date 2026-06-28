@@ -15,6 +15,8 @@ allowlist는 **「@gmail.com만」** 이 아니라, **Google 로그인 시 Fireb
 |
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 -----------|----------------|
 | `you@gmail.com` | ✅ |
 | `name@company.com` (Google Workspace) | ✅ |

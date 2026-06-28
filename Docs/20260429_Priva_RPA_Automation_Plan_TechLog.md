@@ -11,6 +11,8 @@ workspace: Winterbud-03MS
 summary: "API가 지원되지 않는 폐쇄형 온실 제어 시스템(Priva Maximizer / PODesktop)을 완전히 무인 자동화하기 위한 RPA(로보틱 프로세스 자동화) 기반의 시스템 아키텍처 및 실행 로드맵 기획안입니다."
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 🤖 [TechLog] Priva Office Direct (POD) 무인 자동화(RPA) 아키텍처 설계서

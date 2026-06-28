@@ -11,6 +11,8 @@ workspace: Winterbud77/AliaBot
 summary: "비개발자가 AI 코딩 에이전트를 조율하여 업무를 자동화하고 웹앱을 운영하기 위한 바이브 코딩 바이블 가이드북 청사진"
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # 📖 바이브 코딩으로 업무 효율화하기 SOPs (비개발자용)

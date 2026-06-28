@@ -10,6 +10,8 @@ ai_model: Antigravity (Medium)
 summary: "PWA 중복 레지스트리 제거 및 클라이언트 청소 가이드"
 session_name: "Restoring Session Test09"
 session_id: "4a121658-e924-48e9-9455-497feba68766"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 ---
 
 # SOP: AliaBot Phase 5.x PWA 중복 제거 및 클라이언트 청소

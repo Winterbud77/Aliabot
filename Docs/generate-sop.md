@@ -1,5 +1,7 @@
 ---
 description: 표준화된 문제 해결 SOP 및 초상세 기술 로그(TechLog_Gemini_Antigravity)를 생성하는 마스터 워크플로우
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # 🚀 [Workflow] SOP 및 TechLog 자동 생성 가이드

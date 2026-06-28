@@ -17,10 +17,12 @@ import {
     getPwaInstallSteps,
 } from './utils/pwaInstall'
 import { buildChronologicalSeqUpdates, looksLikeLegacySeqMismatch, hasDuplicateSeqs } from './utils/seqBackfill'
+import { exportTodosToCSV } from './utils/csvExporter'
 
 function App() {
     const [user, setUser] = useState(null)
     const [todos, setTodos] = useState([])
+    const [viewMode, setViewMode] = useState('list') // 'list' | 'table'
     const [inputValue, setInputValue] = useState('')
     const [editingId, setEditingId] = useState(null)       // 수정 중인 메모 ID
     const [editingText, setEditingText] = useState('')     // 수정 중인 텍스트
@@ -33,6 +35,7 @@ function App() {
     const sttBaseTextRef = useRef('')           // 음성 입력 시작 시점의 기존 텍스트
     const sttCommittedRef = useRef('')          // 이번 세션에서 확정(final)된 음성 텍스트
     const sttWantsListeningRef = useRef(false)  // 사용자가 마이크를 끌 때까지 듣기 유지
+    const isBackfillingRef = useRef(false)      // AI 백필 중복 실행 방지 락(Lock)
     
     // Google Calendar API용 Access Token 관리
     const [googleAccessToken, setGoogleAccessToken] = useState(() => {
@@ -43,6 +46,7 @@ function App() {
     const [exportModalTodo, setExportModalTodo] = useState(null)
     const [exportSelectedDestinations, setExportSelectedDestinations] = useState([])
     const [exportActionType, setExportActionType] = useState('copy') // 'copy' | 'move'
+    const [recipientEmail, setRecipientEmail] = useState('')
     const [showSettingsModal, setShowSettingsModal] = useState(false)
     const [showPwaHelpModal, setShowPwaHelpModal] = useState(false)
     const [showUserManualModal, setShowUserManualModal] = useState(false)
@@ -98,6 +102,7 @@ function App() {
         const suggested = getSuggestedDestinations(exportModalTodo.tags || [])
         setExportSelectedDestinations(suggested)
         setExportActionType('copy')
+        setRecipientEmail('')
     }, [exportModalTodo])
 
     useEffect(() => {
@@ -180,45 +185,7 @@ function App() {
                         console.warn('[seq] 보정 처리 실패:', e?.message || e)
                     }
 
-                    // [AI Backfill] 요약/태깅 미처리된 구형 메모 자동 복원 엔진
-                    try {
-                        const pendingAiDocs = todosData.filter(todo => 
-                            todo.text && 
-                            (todo.aiProcessed !== true || ((!todo.tags || todo.tags.length === 0) && !todo.summary))
-                        )
-                        if (pendingAiDocs.length > 0) {
-                            console.log(`[AI Backfill] 요약이 비어 있는 구형 문서 ${pendingAiDocs.length}개 발견. 백그라운드 자동 복원을 실행합니다...`)
-                            
-                            // 무부하 순차 비동기 호출 (최대 5개씩 처리)
-                            pendingAiDocs.slice(0, 5).forEach(todo => {
-                                analyzeWithGemini(todo.text, apiKeys.gemini || null)
-                                    .then(async (result) => {
-                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, todo.id)
-                                        if (result) {
-                                            await updateDoc(todoRef, {
-                                                tags: result.tags || [],
-                                                summary: result.summary || '',
-                                                metadata: {
-                                                    parsedEvent: result.parsedEvent || null
-                                                },
-                                                aiProcessed: true
-                                            })
-                                        } else {
-                                            await updateDoc(todoRef, { aiProcessed: true })
-                                        }
-                                        console.log(`[AI Backfill] 문서 ${todo.seq || todo.id} 요약 복구 완료`)
-                                    })
-                                    .catch(err => {
-                                        console.warn(`[AI Backfill] 문서 ${todo.id} 분석 실패:`, err.message)
-                                        // 무한 호출 방지를 위해 aiProcessed를 true로 찍어서 다음 스캔에서 스킵 유도
-                                        const todoRef = doc(db, `users/${currentUser.uid}/todos`, todo.id)
-                                        updateDoc(todoRef, { aiProcessed: true }).catch(() => {})
-                                    })
-                            })
-                        }
-                    } catch (e) {
-                        console.warn('[AI Backfill] 복구 도중 예외 발생:', e?.message || e)
-                    }
+                    // [AI Backfill] onSnapshot 내부 가동 중단 (독립 Poller useEffect로 이전)
                 })
 
                 return () => unsubscribeTodos() // cleanup listener
@@ -235,6 +202,69 @@ function App() {
 
         return () => unsubscribeAuth()
     }, [])
+
+    // [AI Backfill Poller] 10초 주기 미처리 AI 데이터 자동 치유 엔진 (Phase 5.7)
+    useEffect(() => {
+        if (!user || !todos?.length) return
+
+        const backfillInterval = setInterval(() => {
+            if (isBackfillingRef.current) return
+
+            const nowMs = Date.now()
+            const pendingAiDocs = todos.filter(todo => {
+                if (!todo.text) return false
+                
+                // 생성된 지 10초 미만인 문서는 방금 추가된 것이므로 백필 대상에서 제외 (addTodo가 직접 처리함)
+                // createdAt이 유실/부재된 구형 문서는 0으로 치환하여 무조건 복구 대상에 포함
+                const createdTime = todo.createdAt?.toDate ? todo.createdAt.toDate().getTime() : 0
+                if (nowMs - createdTime < 10000) return false
+
+                return todo.aiProcessed !== true || !todo.tags || todo.tags.length === 0
+            })
+
+            if (pendingAiDocs.length > 0) {
+                isBackfillingRef.current = true
+                console.log(`[AI Poller] 미처리 문서 ${pendingAiDocs.length}개 발견. 5초 간격 안전 복원 시작...`)
+                
+                ;(async () => {
+                    try {
+                        for (const todo of pendingAiDocs) {
+                            try {
+                                // 429 Rate Limit 방어를 위한 5초(5000ms) 강제 대기
+                                await new Promise(resolve => setTimeout(resolve, 5000))
+                                
+                                const result = await analyzeWithGemini(todo.text, apiKeys.gemini || null)
+                                const todoRef = doc(db, `users/${user.uid}/todos`, todo.id)
+                                
+                                if (result) {
+                                    await updateDoc(todoRef, {
+                                        tags: result.tags || [],
+                                        summary: result.summary || '',
+                                        metadata: {
+                                            parsedEvent: result.parsedEvent || null
+                                        },
+                                        aiProcessed: true
+                                    })
+                                } else {
+                                    await updateDoc(todoRef, { aiProcessed: true })
+                                }
+                                console.log(`[AI Poller] 문서 ${todo.seq || todo.id} 요약 복구 완료`)
+                            } catch (err) {
+                                console.warn(`[AI Poller] 문서 ${todo.id} 분석 실패:`, err.message)
+                                const todoRef = doc(db, `users/${user.uid}/todos`, todo.id)
+                                await updateDoc(todoRef, { aiProcessed: true }).catch(() => {})
+                            }
+                        }
+                    } finally {
+                        isBackfillingRef.current = false
+                    }
+                })()
+            }
+        }, 10000)
+
+        return () => clearInterval(backfillInterval)
+    }, [todos, user, apiKeys.gemini])
+    
 
     // PWA Install Prompt Listener
     useEffect(() => {
@@ -413,7 +443,12 @@ function App() {
             })
             setInputValue('')
 
-            // 2. AI 분석 — BYOK 키 없어도 Cloud Function(호스트 Gemini) 사용
+            // 2. AI 분석 — 백필 루프 작동 여부에 따른 격리 제어 (API 429 방어)
+            if (isBackfillingRef.current) {
+                console.log('[addTodo] AI 백필 복원이 가동 중이므로, 신규 메모 AI 분석을 백필 대기열로 이관합니다. (10초 후 자동 처리)')
+                return
+            }
+
             analyzeWithGemini(cleanedText, apiKeys.gemini || null)
                 .then(async (result) => {
                     if (result) {
@@ -653,104 +688,156 @@ function App() {
 
         console.log(`Dispatch "${todo.text}" ->`, destinations, `mode=${exportActionType}`)
 
-        // 1) 외부 시스템 전송 (순서대로 처리: 실패 시 즉시 중단)
+        // 1) 외부 시스템 전송 (일괄 시도 및 개별 예외 격리)
+        const successDestinations = []
+        const failedDestinations = []
+
         for (const destination of destinations) {
-            if (destination === 'obsidian') {
-                const eventDetails = todo.metadata?.parsedEvent || null
-                const result = await sendToObsidian(todo.text, '', eventDetails)
-                if (!result?.success) {
-                    alert(
-                        `❌ 옵시디언 전송 실패: ${result?.error || '알 수 없는 오류'}\n` +
-                        '(현재 PC의 옵시디언이 켜져있고 Local REST API 플러그인이 활성화되어 있는지 확인해주세요)'
-                    )
-                    return
-                }
-            } else if (destination === 'notion') {
-                const result = await sendToNotion({
-                    text: todo.text,
-                    tags: todo.tags || [],
-                    summary: todo.summary || '',
-                    notionToken: apiKeys.notion,
-                    databaseId: apiKeys.notionDatabaseId,
-                    titleProperty: apiKeys.notionTitleProperty,
-                    contentProperty: apiKeys.notionContentProperty,
-                })
-                if (!result?.success) {
-                    alert(`❌ Notion 전송 실패: ${result?.error || '알 수 없는 오류'}`)
-                    return
-                }
-            } else if (destination === 'calendar') {
-                if (!googleAccessToken) {
-                    alert('❌ 구글 캘린더 전송 실패: 구글 인증이 유효하지 않습니다. 로그아웃 후 다시 구글 로그인을 수행해 주세요.')
-                    return
-                }
-                
-                // metadata.parsedEvent 또는 fallback 설정
-                const eventDetails = todo.metadata?.parsedEvent
-                    ? { ...todo.metadata.parsedEvent, description: todo.metadata.parsedEvent.description || todo.text }
-                    : {
-                        summary: todo.summary || todo.text.slice(0, 50),
-                        description: todo.text
+            try {
+                let result = null
+                if (destination === 'obsidian') {
+                    const eventDetails = todo.metadata?.parsedEvent || null
+                    result = await sendToObsidian(todo.text, '', eventDetails)
+                } else if (destination === 'notion') {
+                    result = await sendToNotion({
+                        text: todo.text,
+                        tags: todo.tags || [],
+                        summary: todo.summary || '',
+                        notionToken: apiKeys.notion,
+                        databaseId: apiKeys.notionDatabaseId,
+                        titleProperty: apiKeys.notionTitleProperty,
+                        contentProperty: apiKeys.notionContentProperty,
+                    })
+                } else if (destination === 'calendar') {
+                    let currentToken = googleAccessToken
+                    if (!currentToken) {
+                        console.log('[Calendar Dispatch] 누락된 구글 캘린더 액세스 토큰 팝업 재획득 시도...')
+                        try {
+                            const authResult = await signInWithPopup(auth, googleProvider)
+                            const credential = GoogleAuthProvider.credentialFromResult(authResult)
+                            currentToken = credential?.accessToken || ''
+                            if (currentToken) {
+                                setGoogleAccessToken(currentToken)
+                                localStorage.setItem('alia-bot-google-access-token', currentToken)
+                                console.log('[Auth] 캘린더 전송을 위한 팝업 토큰 획득 성공')
+                            }
+                        } catch (authErr) {
+                            failedDestinations.push({ 
+                                destination, 
+                                error: '구글 인증 획득 실패: ' + (authErr.message || '인증 팝업이 차단되었거나 닫혔습니다.') 
+                            })
+                            continue
+                        }
                     }
-                
-                const result = await insertCalendarEvent(googleAccessToken, eventDetails)
-                if (!result?.success) {
-                    alert(`❌ 구글 캘린더 전송 실패: ${result?.error || '알 수 없는 오류'}`)
-                    return
+
+                    if (!currentToken) {
+                        failedDestinations.push({ destination, error: '구글 캘린더 연동을 위해 구글 인증이 필요합니다.' })
+                        continue
+                    }
+
+                    const eventDetails = todo.metadata?.parsedEvent
+                        ? { ...todo.metadata.parsedEvent, description: todo.metadata.parsedEvent.description || todo.text }
+                        : {
+                            summary: todo.summary || todo.text.slice(0, 50),
+                            description: todo.text
+                        }
+                    result = await insertCalendarEvent(currentToken, eventDetails)
+                } else if (destination === 'email') {
+                    const emailHtml = todo.summary 
+                        ? `<h3>[AliaBot] 요약</h3><p><b>${todo.summary}</b></p><hr/><p>${todo.text.replace(/\n/g, '<br>')}</p>`
+                        : `<p>${todo.text.replace(/\n/g, '<br>')}</p>`;
+                    
+                    result = await sendEmail({
+                        to: recipientEmail.trim() || undefined,
+                        subject: todo.summary ? `[AliaBot] ${todo.summary}` : `[AliaBot] 메모 전송`,
+                        text: todo.text,
+                        html: emailHtml
+                    })
+                } else if (destination === 'clipboard') {
+                    result = await copyToClipboard(todo.text)
+                } else {
+                    failedDestinations.push({ destination, error: `지원하지 않는 목적지입니다: ${destination}` })
+                    continue
                 }
-            } else if (destination === 'email') {
-                const emailHtml = todo.summary 
-                    ? `<h3>[AliaBot] 요약</h3><p><b>${todo.summary}</b></p><hr/><p>${todo.text.replace(/\n/g, '<br>')}</p>`
-                    : `<p>${todo.text.replace(/\n/g, '<br>')}</p>`;
-                
-                const result = await sendEmail({
-                    subject: todo.summary ? `[AliaBot] ${todo.summary}` : `[AliaBot] 메모 전송`,
-                    text: todo.text,
-                    html: emailHtml
-                })
-                if (!result?.success) {
-                    alert(`❌ 이메일 전송 실패: ${result?.error || '알 수 없는 오류'}`)
-                    return
+
+                if (result?.success) {
+                    successDestinations.push(destination)
+                } else {
+                    let errMsg = result?.error || '알 수 없는 오류'
+                    if (destination === 'obsidian') {
+                        errMsg += ' (옵시디언 전송 실패: PC에서 옵시디언이 켜져있고 Local REST API 플러그인이 활성화되어 있는지 확인해 주세요.)'
+                    }
+                    failedDestinations.push({ destination, error: errMsg })
                 }
-            } else if (destination === 'clipboard') {
-                const result = await copyToClipboard(todo.text)
-                if (!result?.success) {
-                    alert(`❌ 클립보드 복사 실패: ${result?.error || '알 수 없는 오류'}`)
-                    return
-                }
-            } else {
-                alert(`지원하지 않는 목적지입니다: ${destination}`)
-                return
+            } catch (err) {
+                failedDestinations.push({ destination, error: err.message || '런타임 오류 발생' })
             }
         }
 
         // 2) 외부 전송 성공 후 Firestore 처리 (이동 or 복사)
+        const totalSuccess = successDestinations.length
+        const totalFailed = failedDestinations.length
+
+        if (totalSuccess === 0) {
+            const errMsg = failedDestinations.map(f => `- ${f.destination.toUpperCase()}: ${f.error}`).join('\n')
+            alert(`❌ 모든 전송 시도에 실패했습니다.\n\n${errMsg}`)
+            return
+        }
+
         try {
             const todoRef = doc(db, `users/${user.uid}/todos`, todo.id)
 
-            if (exportActionType === 'move') {
-                // 이동(Move): 전송 성공 후 리스트에서 삭제
+            // 전체 성공이고 이동(move) 선택 시만 데이터 삭제
+            if (exportActionType === 'move' && totalFailed === 0) {
                 await deleteDoc(todoRef)
             } else {
-                // 복사(Copy): destinations/category/exportedAt 기록
+                // 복사이거나 일부 전송 실패 시 성공한 채널 뱃지 기록
+                const currentDestinations = todo.destinations || []
+                const newMergedDestinations = Array.from(new Set([...currentDestinations, ...successDestinations]))
+
                 await updateDoc(todoRef, {
-                    destinations: destinations,
-                    category: resolvePrimaryCategoryFromDestinations(destinations),
+                    destinations: newMergedDestinations,
+                    category: resolvePrimaryCategoryFromDestinations(newMergedDestinations),
                     exportedAt: serverTimestamp(),
                 })
             }
         } catch (error) {
             console.error('Export/Dispatch Firestore 처리 실패:', error)
-            alert('전송은 성공했지만 Firestore 상태 업데이트에 실패했습니다.')
-            // move인 경우 삭제가 이미 되었을 수 있으므로 여기서는 추가 복구를 하지 않습니다.
+            alert('전송 처리는 수행되었으나 Firestore 상태 업데이트에 실패했습니다.')
             return
         }
 
-        setExportModalTodo(null) // 전송 완료 후 모달 닫기
+        // 최종 알림 및 모달 닫기
+        if (totalFailed > 0) {
+            const successList = successDestinations.map(d => d.toUpperCase()).join(', ')
+            const errMsg = failedDestinations.map(f => `- ${f.destination.toUpperCase()}: ${f.error}`).join('\n')
+            alert(`⚠️ 일부 전송 완료 (성공: ${successList})\n\n❌ 실패 내역:\n${errMsg}\n\n(실패한 목적지가 존재하므로 원본 메모는 삭제되지 않았습니다.)`)
+        } else {
+            const successList = successDestinations.map(d => d.toUpperCase()).join(', ')
+            alert(`✅ 전송 완료: ${successList}`)
+        }
+
+        setExportModalTodo(null) // 모달 닫기
+    }
+
+    // 테이블 뷰 내에서 날짜와 시간을 짧게 포맷팅하는 헬퍼 함수
+    const formatDateForTable = (timestamp) => {
+        if (!timestamp) return '-'
+        try {
+            const date = typeof timestamp.toDate === 'function' ? timestamp.toDate() : new Date(timestamp)
+            if (isNaN(date.getTime())) return '-'
+            const mm = String(date.getMonth() + 1).padStart(2, '0')
+            const dd = String(date.getDate()).padStart(2, '0')
+            const hh = String(date.getHours()).padStart(2, '0')
+            const min = String(date.getMinutes()).padStart(2, '0')
+            return `${mm}/${dd} ${hh}:${min}`
+        } catch (e) {
+            return '-'
+        }
     }
 
     return (
-        <div className="app-container">
+        <div className={`app-container ${viewMode === 'table' ? 'mode-table' : ''}`}>
             {/* 상단 고정: 로고·로그인·입력 (#63) */}
             <div className="app-fixed-top">
             <div className="app-header">
@@ -869,11 +956,169 @@ function App() {
                     </button>
                 </div>
             </div>
+
+            {user && (
+                <div className="dashboard-control-bar">
+                    <div className="view-toggle-buttons">
+                        <button 
+                            className={`btn-view-toggle ${viewMode === 'list' ? 'active' : ''}`}
+                            onClick={() => setViewMode('list')}
+                            type="button"
+                        >
+                            📋 목록
+                        </button>
+                        <button 
+                            className={`btn-view-toggle ${viewMode === 'table' ? 'active' : ''}`}
+                            onClick={() => setViewMode('table')}
+                            type="button"
+                        >
+                            📊 표 보기
+                        </button>
+                    </div>
+                    <button 
+                        className="btn-csv-export"
+                        onClick={() => exportTodosToCSV(todos)}
+                        type="button"
+                    >
+                        📥 Excel 다운로드
+                    </button>
+                </div>
+            )}
             </div>{/* /.app-fixed-top */}
 
             {/* 메모 목록만 스크롤 (#63) */}
             <div className="todo-scroll-region">
-            <ul className="todo-list">
+            {viewMode === 'table' ? (
+                <div className="spreadsheet-container">
+                    <table className="spreadsheet-table">
+                        <thead>
+                            <tr>
+                                <th>순번</th>
+                                <th>상태</th>
+                                <th>작성시간</th>
+                                <th>메모 내용</th>
+                                <th>AI 요약</th>
+                                <th>태그</th>
+                                <th>전송 목적지</th>
+                                <th>작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {todos
+                              .filter(todo => activeTag ? (todo.tags && todo.tags.includes(activeTag)) : true)
+                              .map((todo, index) => (
+                                <tr key={todo.id} className={todo.completed ? 'completed' : ''}>
+                                    <td className="col-seq">{todo.seq ?? (todos.length - index)}</td>
+                                    <td className="col-status">
+                                        <label className="checkbox-container">
+                                            <input
+                                                type="checkbox"
+                                                checked={todo.completed}
+                                                onChange={() => toggleTodo(todo)}
+                                                disabled={!user}
+                                            />
+                                            <span className="checkmark"></span>
+                                        </label>
+                                    </td>
+                                    <td className="col-date">{formatDateForTable(todo.createdAt)}</td>
+                                    <td className="col-text">
+                                        {editingId === todo.id ? (
+                                            <div className="edit-inline-table">
+                                                <input
+                                                    type="text"
+                                                    className="edit-input-table"
+                                                    value={editingText}
+                                                    onChange={e => setEditingText(e.target.value)}
+                                                    onKeyDown={e => {
+                                                        if (e.key === 'Enter') saveTodo(todo.id);
+                                                        if (e.key === 'Escape') setEditingId(null);
+                                                    }}
+                                                    autoFocus
+                                                />
+                                                <div className="edit-buttons-table">
+                                                    <button className="btn-save-table" onClick={() => saveTodo(todo.id)}>✓</button>
+                                                    <button className="btn-cancel-table" onClick={() => setEditingId(null)}>✕</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <span className="todo-text-table" onClick={() => user && toggleTodo(todo)}>
+                                                {todo.text}
+                                            </span>
+                                        )}
+                                        {todo.aiProcessed === false && user && (
+                                            <span className="ai-processing-table">✨ AI 분석 중...</span>
+                                        )}
+                                    </td>
+                                    <td className="col-summary">{todo.summary || '-'}</td>
+                                    <td className="col-tags">
+                                        {todo.tags && todo.tags.length > 0 ? (
+                                            <div className="todo-tags-table">
+                                                {todo.tags.map(tag => (
+                                                    <span
+                                                        key={tag}
+                                                        className={`tag-chip ${activeTag === tag ? 'tag-chip-active' : ''}`}
+                                                        onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                                                        title={`'${tag}' 태그로 필터링`}
+                                                    >#{tag}</span>
+                                                ))}
+                                            </div>
+                                        ) : '-'}
+                                    </td>
+                                    <td className="col-destinations">
+                                        {todo.destinations && todo.destinations.length > 0 ? (
+                                            <div className="todo-badges-table" style={{ display: 'inline-flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                {todo.destinations.map(dest => (
+                                                    <span key={dest} className={`badge badge-${dest}`} style={{ margin: '0' }}>
+                                                        {dest === 'calendar' ? '📅 캘린더' 
+                                                         : dest === 'email' ? '✉️ 이메일' 
+                                                         : dest === 'obsidian' ? '📝 Obsidian' 
+                                                         : dest === 'notion' ? '📝 Notion' 
+                                                         : dest === 'clipboard' ? '📋 클립보드' 
+                                                         : dest}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            todo.category && todo.category !== 'todo' ? (
+                                                <span className={`badge badge-${todo.category}`}>
+                                                    {todo.category === 'calendar' ? '📅 캘린더' 
+                                                     : todo.category === 'email' ? '✉️ 이메일' 
+                                                     : todo.category === 'obsidian' ? '📝 Obsidian' 
+                                                     : todo.category === 'notion' ? '📝 Notion' 
+                                                     : '📝 메모'}
+                                                </span>
+                                            ) : '-'
+                                        )}
+                                    </td>
+                                    <td className="col-actions">
+                                        {user && (
+                                            <div className="todo-actions-table">
+                                                <button className="btn-edit" onClick={() => { setEditingId(todo.id); setEditingText(todo.text); }} aria-label="Edit">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                    </svg>
+                                                </button>
+                                                <button className="btn-export" onClick={() => setExportModalTodo(todo)} aria-label="Export">
+                                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                                                </button>
+                                                <button className="btn-delete" onClick={() => deleteTodo(todo.id)} aria-label="Delete">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M3 6h18"></path>
+                                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                              ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <ul className="todo-list">
                 {!activeTag && (
                     <div className="tag-help-banner">
                         <span>
@@ -1014,6 +1259,7 @@ function App() {
                     </li>
                 ))}
             </ul>
+            )}
             </div>{/* /.todo-scroll-region */}
 
             {/* --- Settings Modal (BYOK) --- */}
@@ -1228,6 +1474,32 @@ function App() {
                                         )
                                     })}
                                 </div>
+                                {exportSelectedDestinations.includes('email') && (
+                                    <div className="email-recipient-input-group" style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600', textAlign: 'left', display: 'block' }}>
+                                            ✉️ 수신자 이메일 주소 (비워두면 본인에게 발송)
+                                        </label>
+                                        <input
+                                            type="email"
+                                            className="email-recipient-input"
+                                            placeholder={user?.email || "example@domain.com"}
+                                            value={recipientEmail}
+                                            onChange={(e) => setRecipientEmail(e.target.value)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '0.88rem',
+                                                outline: 'none',
+                                                width: '100%',
+                                                transition: 'border-color 0.2s',
+                                                boxSizing: 'border-box'
+                                            }}
+                                            onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
+                                            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="modal-section">

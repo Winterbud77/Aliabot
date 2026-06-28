@@ -12,6 +12,8 @@ created: 2026-04-08
 ai_model: Gemini (Antigravity)
 workspace: Winterbud-03MS
 summary: "C드라이브 용량 널뛰기 현상 해결을 위해 윈도우 기본 정리부터 AI 앱 가상 환경(VM) 캐시를 D드라이브로 이사시키는 과정까지를 수록한 통합 표준 매뉴얼입니다."
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # 📋 [SOP] C드라이브 용량 확보 및 캐시(VM) 이관 지침 - Gemini (Antigravity)

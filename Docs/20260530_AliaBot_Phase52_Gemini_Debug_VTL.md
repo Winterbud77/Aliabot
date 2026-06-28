@@ -9,6 +9,8 @@ created: 2026-05-30
 ai_model: Claude Sonnet 4.6 (Antigravity)
 workspace: Winterbud77/AliaBot
 summary: "Gemini API 연동 후 AI 태깅/요약 기능이 작동하지 않아 디버깅한 전체 과정. 세 가지 복합 원인(모델 종료, 토큰 부족, JSON 파싱 오류)을 순차적으로 발견하고 해결함."
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # 🐛 [TechLog] AliaBot Phase 5.2 — Gemini AI 태깅 디버깅 기록

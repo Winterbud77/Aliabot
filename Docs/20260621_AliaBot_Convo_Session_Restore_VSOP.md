@@ -6,6 +6,8 @@ date: 2026-06-21
 type: standard-procedure-log
 category: AliaBot
 session: 복원용_Test09
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 > **목적 (Purpose)**:

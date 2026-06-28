@@ -71,8 +71,9 @@
   2. 현재 구현 Gap 분석 → /pdca analyze todo-app
 
   어떻게 진행할까요?
-
-  ---
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
+---
   ─────────────────────────────────────────────────
   📊 bkit Feature Usage
   ─────────────────────────────────────────────────

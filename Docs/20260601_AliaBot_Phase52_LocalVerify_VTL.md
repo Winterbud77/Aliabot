@@ -14,6 +14,8 @@ related_docs:
   - outputs/20260530_AliaBot_Phase52_Gemini_Debug_VTL.md
   - outputs/20260601_AliaBot_Phase52_LocalVerify_VSOP.md
   - docs/Session_SOP_Guidelines.md
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # VTL: AliaBot Phase 5.2 — Cursor 로컬 검증

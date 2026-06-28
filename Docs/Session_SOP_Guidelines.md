@@ -30,7 +30,8 @@ Work01_Anti/
        └─ Screenshots/        ← 스크린샷 보관 폴더
             └─ [YYYYMM]/      ← 월별 하위 폴더
 ```
-
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 ## 2. 📄 VTL 문서 연동 규칙
@@ -155,9 +156,29 @@ Work01_Anti/
 | **Cursor (Composer)** | `.cursorrules` (루트) | 루트에 `.cursorrules` 생성 후, `Docs/Agent_Memory.md`를 최우선 인덱싱(Indexing) 파일로 링크 연결 |
 | **OpenAI Codex / ChatGPT / Copilot** | `.github/copilot-instructions.md` 또는 수동 업로드 | Copilot/Codex 환경은 루트에 `.github/copilot-instructions.md` 파일을 배치하여 지침을 연계하고, Web UI 구동 시 `Docs/Agent_Memory.md`를 업로드창에 인풋(Input)으로 첨부하여 프라이밍(Priming; 사전 지식 주입)을 적용 |
 
+#### 5.5 Dynamic Session Naming with Prefix Constraint (접두사 제약을 가진 동적 세션 이름 생성)
+
+대화 세션(Conversation Session)이 누적될 때 목록의 시각적 위계(Hierarchy)를 관리하고 주제를 직관적으로 식별하기 위한 표준 지침입니다.
+
+* **개념**: 세션 이름의 앞부분은 고정된 규칙(접두사)을 강제하고, 뒷부분은 첫 프롬프트에 담긴 핵심 대화 맥락을 기반으로 AI가 스스로 적절한 요약어를 완성하여 타이틀을 결정하는 기법입니다.
+* **표준 프롬프트 템플릿**:
+  새로운 세션을 시작할 때, 사용자가 첫 프롬프트의 맨 위에 아래 지시어 스니펫을 배치하여 플랫폼의 세션 타이틀 갱신 엔진을 제어합니다.
+  ```markdown
+  [System Instruction: 
+  Please set this session name format as: "AliaBot Phase [Version]: [Key Topic]".
+  Extract the [Key Topic] from the following instructions and fill it in dynamically.]
+  ```
+* **작동 메커니즘**: 에이전트는 대화 초입의 `System Instruction` 구문을 최우선 파싱하여 타이틀 규칙을 접수하고, 하단 본문에서 당일의 주요 개발 모듈(예: Spreadsheet View, CSV Export, Mail Send)을 캡처한 뒤 `[Key Topic]`을 완성하여 최종 세션 제목을 수립합니다.
+
+#### 5.6 세션 분량 극대화 및 분할 최소화 규칙 (Session Length Maximization & Minimal Splitting Rule)
+* **개념**: 에이전트의 이전 컨텍스트 손실을 유발하는 새 대화(New Session) 전환을 최소화하고, 단일 세션 내에서 가능한 한 많은 태스크를 연속 소화하여 개발 연속성과 지식 연결 성능을 유지하는 전략입니다.
+* **지침 사항**:
+  1. **한 세션에서 연속 처리**: 컨텍스트 로딩 오버헤드와 히스토리 유실을 방지하기 위해, 사소한 단계(Phase) 전환 시 기계적으로 세션을 쪼개지 말고 단일 대화 세션 내에서 개발을 완료합니다.
+  2. **세션 전환 트리거**: AI 모델의 토큰 용량 한계로 인해 응답 속도가 심각하게 지연되거나, 이전 코드 기억에 혼선이 발견되는 지점에 한하여 사용자 승인을 거쳐 새 대화창으로 리프레시를 제안합니다.
+
 ---
 
-## 4.2 📸 Phase 5.2~5.4 스크린샷 체크리스트(요약)
+## 5.7 📸 Phase 5.2~5.4 스크린샷 체크리스트(요약)
 ### Phase 5.2 UX
 - 최신순 정렬(`createdAt desc`) 적용 확인
 - 인라인 수정(✏️) 후 저장 결과 화면

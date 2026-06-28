@@ -7,6 +7,8 @@ type: standard-procedure-log
 category: Obsidian
 subcategory: Sync
 tags: [sop, obsidian, sync, onedrive, multi-device, backup]
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 > **목적 (Purpose)**:

@@ -7,6 +7,8 @@ subcategory: UI-UX
 tags: [aliabot, phase5.2, ux, sorting, editing, filtering, seq]
 created: 2026-06-01
 summary: "최신순 정렬, seq 표시(기존 데이터용 fallback), 인라인 수정/저장, 태그 필터 배너/칩 UX를 보강했습니다."
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # 🧩 AliaBot Phase 5.2 UX 보강 기록 (5/31~6/1)

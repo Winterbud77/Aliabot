@@ -16,7 +16,8 @@ SOP =
 3. Human SOP
 4. Machine SOP
 5. TechLog Link
-
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 ## 2. Visual Context

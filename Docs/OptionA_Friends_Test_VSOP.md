@@ -12,7 +12,10 @@ AliaBot은 **Google 로그인만** 구현되어 있습니다 (`GoogleAuthProvide
 allowlist는 **「@gmail.com만」** 이 아니라, **Google 로그인 시 Firebase가 받는 `email` 주소**를 검사합니다.
 
 | 계정 예시 | allowlist 등록 |
-|-----------|----------------|
+|
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
+-----------|----------------|
 | `you@gmail.com` | ✅ |
 | `name@company.com` (Google Workspace) | ✅ |
 | Kakao / Apple / 이메일·비밀번호 | ❌ (로그인 UI 자체 없음) |

@@ -1165,3 +1165,280 @@ input:focus {
     gap: 8px;
   }
 }
+
+/* --- Phase 5.5: Dashboard Spreadsheet (Table) View & CSV Export Styles --- */
+
+/* App Container transition and maximum width in table view mode */
+.app-container {
+  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-container.mode-table {
+  max-width: 1200px;
+  width: 95%;
+}
+
+/* Dashboard Control Bar */
+.dashboard-control-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(243, 244, 246, 0.6);
+  border: 1px solid rgba(229, 231, 235, 0.8);
+  border-radius: 12px;
+  padding: 6px 12px;
+  margin-bottom: 0.75rem;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+/* View Toggle Switch Tab Style */
+.view-toggle-buttons {
+  display: flex;
+  background: #e5e7eb;
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.btn-view-toggle {
+  background: none;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-view-toggle:hover {
+  color: #111827;
+}
+
+.btn-view-toggle.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Excel Download Button */
+.btn-csv-export {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.btn-csv-export:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Spreadsheet Container & Table Layout */
+.spreadsheet-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  max-height: 55vh;
+  max-height: 55dvh;
+}
+
+.spreadsheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+  min-width: 900px; /* Minimum width to guarantee spreadsheet experience */
+}
+
+/* Sticky Header styling */
+.spreadsheet-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.spreadsheet-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.spreadsheet-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.spreadsheet-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.spreadsheet-table tr.completed td {
+  background-color: #f8fafc;
+}
+
+.spreadsheet-table tr.completed .todo-text-table {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* Column Specific Styles */
+.col-seq {
+  width: 50px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.col-status {
+  width: 45px;
+  text-align: center;
+}
+
+.col-date {
+  width: 110px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.col-text {
+  min-width: 250px;
+}
+
+.col-summary {
+  width: 200px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.col-tags {
+  width: 150px;
+}
+
+.col-destinations {
+  width: 180px;
+}
+
+.col-actions {
+  width: 110px;
+  text-align: center;
+}
+
+/* Inline Edit for Table Mode */
+.edit-inline-table {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+
+.edit-input-table {
+  flex: 1;
+  padding: 4px 8px;
+  border: 2px solid var(--primary);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  outline: none;
+  min-width: 120px;
+}
+
+.edit-buttons-table {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-save-table, .btn-cancel-table {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-save-table {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-save-table:hover { background: var(--primary-hover); }
+
+.btn-cancel-table {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.btn-cancel-table:hover { background: #e2e8f0; }
+
+.todo-text-table {
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.ai-processing-table {
+  font-size: 0.7rem;
+  color: #a78bfa;
+  margin-left: 6px;
+  animation: pulse 1.5s infinite;
+}
+
+.todo-tags-table {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.todo-actions-table {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+/* Mobile responsive styling overrides for control bar & container size in table mode */
+@media (max-width: 600px) {
+  .dashboard-control-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .view-toggle-buttons {
+    width: 100%;
+  }
+  
+  .btn-view-toggle {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .btn-csv-export {
+    width: 100%;
+    justify-content: center;
+  }
+}

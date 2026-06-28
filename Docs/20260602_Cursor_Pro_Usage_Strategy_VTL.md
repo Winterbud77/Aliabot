@@ -14,6 +14,8 @@ related_docs:
   - Docs/AI_Tool_Usage_SOP.md
   - Docs/Session_SOP_Guidelines.md
   - Docs/VTL_VSOP_Writing_Guide.md
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # VTL: Cursor Pro + 다중 AI 구독 통합 사용 전략

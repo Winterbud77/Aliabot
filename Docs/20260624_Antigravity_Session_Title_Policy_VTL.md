@@ -8,6 +8,8 @@ tags: [vtl, antigravity, session, auto-titling, global-settings, context-specifi
 created: 2026-06-24
 ai_model: Gemini 3.5 Flash (Medium)
 summary: "Antigravity 대화 세션의 자동 타이틀 명명 정책(Auto-titling Policy), 전역 설정과 세션 맥락 메뉴의 기술적 분리 원리 및 효율적인 대화 분류 일련번호 관리 전략 수립"
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # 📝 TechLog: Antigravity UI 대화 세션 명칭 정책 및 맥락 제어 기술 로그 (VTL)

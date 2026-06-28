@@ -14,6 +14,8 @@ related_docs:
   - Outputs/20260603_AliaBot_OptionA_Friends_Test_VSOP.md
   - Docs/OptionA_Friends_Test_VSOP.md
   - Docs/Session_SOP_Guidelines.md
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # VTL: AliaBot Option A — 지인 테스트 배포

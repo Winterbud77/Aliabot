@@ -9,6 +9,8 @@ related_docs:
   - Docs/Session_SOP_Guidelines.md
   - Docs/VTL_VSOP_Writing_Guide.md
   - Outputs/20260602_Cursor_Pro_Usage_Strategy_VTL.md
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # AI 도구 사용량·역할 분리 SOP

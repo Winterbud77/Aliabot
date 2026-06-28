@@ -9,6 +9,8 @@ created: 2026-06-01
 ai_model: Cursor Agent (Auto)
 related_vtl: outputs/20260601_AliaBot_Phase52_LocalVerify_VTL.md
 summary: "비개발자도 따라할 수 있는 Phase 5.2 로컬 검증 절차 (스크린샷 포함)"
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # VSOP: AliaBot Phase 5.2 로컬 검증

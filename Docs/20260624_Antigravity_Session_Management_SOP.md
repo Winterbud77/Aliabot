@@ -8,6 +8,8 @@ summary: "대화 세션의 자동 타이틀링 규칙에 맞춘 첫 프롬프트
 related_docs:
   - Docs/20260624_Antigravity_Session_Title_Policy_VTL.md
   - Docs/20260621_AliaBot_Convo_Session_Restore_VSOP.md
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # 📋 SOP: Antigravity 대화 세션 분류 및 전역 설정 관리 절차서

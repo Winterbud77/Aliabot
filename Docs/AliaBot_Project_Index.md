@@ -10,7 +10,8 @@
 * [📝 VTL_VSOP_Writing_Guide (기술로그/절차서 작성법)]([[VTL_VSOP_Writing_Guide]])
 * [🏗️ VibeCoding_SOP_Guide_Blueprint (바이브 코딩 청사진)]([[VibeCoding_SOP_Guide_Blueprint]])
 * [🚀 generate-sop (SOP 자동 생성 가이드)]([[generate-sop]])
-
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 ## 🛠️ 2. 최근 작업 기술 로그 및 절차서 (Phase 5.x)

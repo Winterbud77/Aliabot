@@ -14,6 +14,8 @@ related_docs:
   - Docs/20260617_AliaBot_Phase5_Obsidian_Sync_SOP.md
   - Docs/Session_SOP_Guidelines.md
   - Docs/VTL_VSOP_Writing_Guide.md
+session_name: "Restoring Session Test09"
+session_id: "4a121658-e924-48e9-9455-497feba68766"
 ---
 
 # TechLog: AliaBot Phase5 Obsidian Sync VTL

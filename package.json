@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy:functions": "firebase deploy --only functions,firestore:rules"
+    "deploy:functions": "firebase deploy --only functions,firestore:rules",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:all": "firebase deploy --only functions,firestore:rules,hosting"
   },
   "dependencies": {
     "firebase": "^12.12.1",

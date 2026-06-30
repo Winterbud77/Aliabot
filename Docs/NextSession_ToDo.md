@@ -1,55 +1,64 @@
 # 🚀 AliaBot Conductor: Phase 5+ Master Roadmap & Handover
 
-> **문서 목적:** '일정/옵시디언 날짜 폴백 및 다중 뱃지 UI 개선, 동기화 경로 이전' 세션을 성공적으로 종료하고, 새로운 'AliaBot Phase 5.6' 세션으로 완벽한 맥락(Context)을 상속하기 위한 인수인계 및 개발 마스터 로드맵입니다.
+> **문서 목적:** 'Gemini API 401/500 에러 진압, 캘린더 인증 세션 자동 복원 및 PWA 모바일 최종 호스팅 배포' 세션을 성공적으로 종료하고, 새로운 'AliaBot Phase 5.8' 세션으로 완벽한 맥락(Context)을 상속하기 위한 인수인계 및 개발 마스터 로드맵입니다.
 
 ---
 
-## 1. 🎯 다음 세션(새 대화창) 핵심 목표: "이메일/캘린더 샌드박스 테스팅 및 예외 데이터 백필 모니터링"
+## 1. 🎯 다음 세션(새 대화창) 핵심 목표: "노션(Notion) 연동 활성화 및 PWA 모바일 실기 최종 검증"
 
-다음 세션에서는 구현 완료된 이메일 목적지 전송 기능과 캘린더 전송 기능의 샌드박스(실제 메일/캘린더 API 연동 전송) 연동 실 검증을 수행하고, 날짜 파싱 오동작 예외에 대응하는 복구 모니터링에 집중합니다.
+다음 세션에서는 아직 설정되지 않은 마지막 목적지인 노션(Notion) API 연동 설정을 완료하고, 실배포된 PWA 모바일 기기 환경에서 전체적인 실시간 데이터 디스패치(Notion, Calendar, Email, Obsidian) 안정성을 최종 점검합니다.
 
-### ✅ 이번 세션 완료 사항 (Phase 5.5 ~ Phase 5.6)
-* **대시보드 스프레드시트 뷰 전환 (Phase 5.5)**:
-  * 기존의 모바일용 세로 카드 리스트 형식 외에, 전체 메모 데이터를 엑셀처럼 격자 형태로 넓게 모아 볼 수 있는 표 보기(Table View) 모드 전환 스위치 구현.
-  * 테이블 모드 활성화 시 전체 레이아웃 너비가 `450px`에서 `1200px`(`width: 95%`)로 부드럽게 확장되는 가변 레이아웃 구현.
-  * 표 보기 상태에서의 인라인 수정 폼, 전송 뱃지, AI 가속 가시화 구현.
-* **Excel 호환 CSV 다운로드 (Phase 5.5)**:
-  * 한글 깨짐이 없는 UTF-8 BOM (`\uFEFF`) 기반 로컬 다운로드 유틸리티(`csvExporter.js`) 구현 및 연동.
-* **이메일(Mail) 발송 채널 확장 (Phase 5.6)**:
-  * 내보내기 목적지 모달에서 이메일(`Email`)이 체크된 경우, 동적으로 수신인 주소를 개별 기입할 수 있는 텍스트 인풋 폼 추가.
-  * 빈 칸으로 둘 시 본인 메일(기본 로그인 계정)로 자동 매핑되고, 특정 이메일을 기입할 시 지인 등 해당 지정 이메일 주소의 수신인 파라미터(`to`)를 Cloud Functions 백엔드로 전달하도록 파이프라인 완성.
-* **이메일(Mail) 샌드박스 테스팅 완료 (Phase 5.6)**:
-  * Resend API Key를 Firebase Secret Manager에 정상 주입 및 배포하여 사용자의 실제 수신함으로 요약 메일 발송에 최종 성공.
-* **Gemini API 429 및 401 권한 충돌 해소 (Phase 5.7)**:
-  * 청정 독립 프로젝트(`AliaBot-Pro` / `+ 프로젝트 만들기` 방식) 기반의 신형 `AQ.Ab8R...` API Key 발급 및 Firebase 주입 배포 완료.
-  * 리액트 `useEffect` 기반의 독립 **10초 주기 AI 백필 폴러(AI Backfill Poller) 훅**을 아키텍처로 도입하여, 비동기 기아(Starvation)를 해결하고 타임스탬프(`createdAt`)가 유실된 구형 문서까지 안전하게 복원 치료하는 파이프라인 정착 완료.
-session_name: "Restoring Session Test09"
-session_id: "4a121658-e924-48e9-9455-497feba68766"
-ai_provider: "Antigravity"
-session_path: "C:\Users\eugene\.gemini\antigravity\brain"
+### ✅ 이번 세션 완료 사항 (Phase 5.7)
+* **Gemini API 401 & 500 에러 근절**:
+  * `gemini-2.5-flash` 모델의 생각 과정(Thinking) 토큰 낭비로 인한 응답 끊김을 `thinkingBudget: 0`, `maxOutputTokens: 4096`로 차단하여 분석 속도를 1초대로 튜닝 완료.
+  * 구글 API Key의 구글 클라우드 내부망 401 Unauthorized 차단 정책을 프론트엔드/백엔드 HTTP 헤더 위장 주입을 통해 우회 성공.
+* **리액트 훅 타이머 재생성 버그 완치**:
+  * `todosRef`/`apiKeysRef` 최신화 참조를 도입하고 백필 `useEffect` 의 감시 배열을 `[user]`로 한정하여 타이머가 불필요하게 리셋되는 버그를 잡고, 실시간 신규 메모는 백필 유량 제어와 무관하게 즉각 처리되도록 상향 패치 완료.
+* **구글 캘린더 401 Token Expiration (토큰 만료) 예외 복원**:
+  * 캘린더 등록 시 만료된 토큰으로 인한 401 오류가 나면, 시스템이 자동으로 `googleAccessToken` 및 `localStorage` 상의 만료 토큰을 즉시 자동 소거(`Clean-up`)하고 사용자에게 "다시 한 번 클릭하여 로그인 팝업으로 토큰을 갱신하십시오" 라고 유도하는 우아한 예외 처리 로직 구현 완료.
+* **Firebase Hosting (파이어베이스 호스팅) 설정 복원 및 실배포**:
+  * `firebase.json` 에 누락되어 있던 `hosting` 블록을 추가하고 `package.json` 에 배포 단축 명령어(`deploy:hosting`, `deploy:all`)를 추가하여 프로덕션 빌드 후 PWA 모바일 배포(`Deploy complete!`) 성공.
+* **`.cursorrules` AI 커밋 가이드라인 정립**:
+  * 프로젝트 루트에 `.cursorrules` 파일을 생성하고 영문 Conventional Commits에 한글 세부 사항을 괄호 안에 병기하는 템플릿 예시를 지정하여 에디터 깃 커밋 자동화 세팅 완비.
+
 ---
 
-### 🗓️ Phase 5.8: 수신 이메일(Inbound Email) 웹훅 처리 및 실시간 AI 디스패치 (다음 세션 주 목표)
-* **Resend Inbound Route 수신 연동**:
-  * 외부(사용자 혹은 Claude 에이전트 등)에서 특정 연동 이메일 주소로 답장이나 메일을 발송했을 때, Resend의 수신 경로 설정을 통해 Firebase Cloud Functions 웹훅 엔드포인트(`https://.../receiveEmail`)로 이메일 데이터를 실시간 토스하도록 웹훅 처리기 설계.
-* **Claude / Gemini 양방향 디스패치(Interactive Dispatch) 프로토타입**:
-  * 수신된 이메일 본문을 AI 모델로 파싱하여 메일 보낸 의도와 본문을 해석한 뒤, 해당 사용자의 Firestore DB에 자동으로 메모/일정 아이템으로 등록 또는 상태 업데이트를 실행하는 수집 엔진 개발.
+### 🗓️ Phase 5.8: 노션(Notion) 연동 설정 및 모바일 PWA 최종 실기 교차 검증 (다음 세션 주 목표)
+* **Notion API Integration (노션 연동 설정)**:
+  * 대시보드 설정 모달에 `Notion API Token`, `Database ID` 등을 안전하게 저장하고, 메모를 내보낼 때 노션 데이터베이스의 프로퍼티에 맞추어 정확하게 안착하도록 노션 API 채널 최종 활성화.
+* **Mobile PWA Cross-Device Verification (모바일 PWA 교차 검증)**:
+  * 실배포된 PWA 주소(`https://react-todo-d3fcc.web.app`)에 사용자의 모바일 스마트폰 기기로 접속하여, 실시간 메모 등록 및 캘린더/이메일/옵시디언 전송이 백그라운드 쿼터 오류(429)나 크래시 없이 물 흐르듯 가동되는지 사용자 관점 실기 테스트 진행.
 
 ---
 
 ## 2. 📚 이전 세션 VTL & SOP 점검 완료 상태
 
-새로운 AI 에이전트(Claude 또는 Gemini)에게 아래 문서들을 읽어보라고 지시하면 현재까지 정립된 Git 수칙, PWA 구조 및 동기화 설계가 100% 동기화됩니다.
+새로운 AI 에이전트에게 아래 문서들을 읽어보라고 지시하면 현재까지 정립된 설계가 100% 인계됩니다.
 
-* **`Docs/20260627_AliaBot_Phase55_Spreadsheet_VTL.md`**: 대시보드 스프레드시트 뷰 전환, CSV 다운로드 및 백필 폴러 아키텍처 구현 기술로그 (본 세션 결과물)
-* **`Docs/20260628_AliaBot_Email_Deploy_SOP.md`**: 이메일 API 키 환경변수 셋팅 및 배포 수칙서 (한글 토큰 파싱 에러 방지 가이드 포함)
-* **`Docs/20260625_AliaBot_MultiDevice_Sync_VTL.md`**: 일정/옵시디언 날짜 폴백 구현, 다중 뱃지 UI 렌더링, `100 Source` 미러링 경로 이전 및 `.gitignore` 설정 기술로그
-* **`Docs/20260625_AliaBot_MultiDevice_Sync_VSOP.md`**: 다중 기기(PC 2대 + 모바일) 옵시디언 동기화 안전 수칙 및 충돌 방지 절차서
+* **`Docs/Session_SOP_Guidelines.md`**: 세션 운영 표준 지침서 (마스터 세션 인젝션 정보 수록)
+* **`Docs/20260628_VTL_SOP_SessionName_Update_SOP.md`**: 세션 접두사 동적 명명 및 VTL 작성 표준 절차서
+* **`Docs/20260628_AliaBot_Email_Deploy_SOP.md`**: 이메일 API 연동 및 배포 수칙서
+* **`Docs/20260627_AliaBot_Phase55_Spreadsheet_VTL.md`**: 대시보드 스프레드시트 뷰 및 백필 폴러 기술로그
+* **`c:\Users\eugene\Projects\Work01_Anti\.cursorrules`**: AI 커밋 규칙 가이드라인 파일
 
 ---
 
-## 3. 🏁 새로운 세션 시작 가이드 (First Prompt)
+## 🏁 새로운 세션 시작 가이드 (First Prompt)
 
-사용자님, 새로운 대화창(Conversation Session)을 시작하신 후 첫 마디로 아래 문장을 복사해서 그대로 붙여넣어 주세요!
+사용자님, 새로운 대화창(Conversation Session)을 시작하신 후 첫 프롬프트의 맨 위에 아래 인스트럭션 구문을 그대로 복사해서 붙여넣어 주세요!
 
-> **"안녕! 우리는 지금 AliaBot(PWA 지휘자 앱) 프로젝트 개발을 진행 중이야. 작업을 시작하기 전에 프로젝트 폴더 내 `Docs/NextSession_ToDo.md` 파일과 `Docs/20260627_AliaBot_Phase55_Spreadsheet_VTL.md` 기술 로그를 꼼꼼히 읽고 현재 아키텍처와 다음 단계인 [Phase 5.8: 수신 이메일(Inbound Email) 웹훅 처리 및 실시간 AI 디스패치] 목표를 파악해 줘. 파악이 완료되면 준비되었다고 답변하고, 구체적인 개발 계획을 수립해 줘!"**
+```markdown
+[System Instruction: 
+Please set this session name format as: "AliaBot Phase 5.8: Notion Integration & Mobile PWA Final Verification".
+Extract the core topic from the following instructions and fill it in dynamically.]
+
+안녕! 우리는 지금 AliaBot(PWA 지휘자 앱) 프로젝트 개발을 진행 중이야.
+작업을 시작하기 전에 프로젝트 폴더 내 `Docs/NextSession_ToDo.md` 파일과 `Docs/Session_SOP_Guidelines.md` 문서를 최우선으로 정독(Parse)하고, 오늘 개발할 아키텍처와 다음 단계인 [Phase 5.8: 노션(Notion) 연동 설정 및 모바일 PWA 최종 실기 교차 검증] 목표를 완벽하게 인계받아서 준비되었다고 알려줘!
+```
+
+---
+session_name: "AliaBot Phase 5.7: Gemini Error Fix & Google Calendar Token Recovery"
+session_id: "4f8a91a7-ff25-4be4-942b-01fbc07a8e1b"
+ai_provider: "Antigravity"
+session_path: "C:\Users\eugene\.gemini\antigravity\brain"
+---

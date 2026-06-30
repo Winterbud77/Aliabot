@@ -36,6 +36,7 @@ function App() {
     const sttCommittedRef = useRef('')          // 이번 세션에서 확정(final)된 음성 텍스트
     const sttWantsListeningRef = useRef(false)  // 사용자가 마이크를 끌 때까지 듣기 유지
     const isBackfillingRef = useRef(false)      // AI 백필 중복 실행 방지 락(Lock)
+    const failedDocIdsRef = useRef(new Set())   // AI 분석 실패 문서 목록 캐시 (429 무한 늪 방지용)
     
     // Google Calendar API용 Access Token 관리
     const [googleAccessToken, setGoogleAccessToken] = useState(() => {
@@ -73,6 +74,14 @@ function App() {
     useEffect(() => {
         localStorage.setItem('alia-bot-api-keys', JSON.stringify(apiKeys))
     }, [apiKeys])
+
+    // todos와 apiKeys의 최신값을 setInterval 안에서 타이머 리셋 없이 안전하게 참조할 수 있도록 useRef 동기화
+    const todosRef = useRef(todos)
+    const apiKeysRef = useRef(apiKeys)
+    useEffect(() => {
+        todosRef.current = todos
+        apiKeysRef.current = apiKeys
+    }, [todos, apiKeys])
 
     // Redirect 로그인 결과 처리 (팝업이 막히는 환경 대응)
     useEffect(() => {
@@ -203,37 +212,48 @@ function App() {
         return () => unsubscribeAuth()
     }, [])
 
-    // [AI Backfill Poller] 10초 주기 미처리 AI 데이터 자동 치유 엔진 (Phase 5.7)
+    // [AI Backfill Poller] 15초 주기 미처리 AI 데이터 자동 치유 엔진 (Phase 5.7)
+    // 의존성 배열에 todos를 제외하여 상태 변경에 따른 불필요한 타이머 해제 및 재등록(리셋 버그)을 완벽히 방지합니다.
     useEffect(() => {
-        if (!user || !todos?.length) return
+        if (!user) return
 
         const backfillInterval = setInterval(() => {
             if (isBackfillingRef.current) return
 
+            const currentTodos = todosRef.current
+            const currentApiKeys = apiKeysRef.current
+            if (!currentTodos?.length) return
+
             const nowMs = Date.now()
-            const pendingAiDocs = todos.filter(todo => {
+            const pendingAiDocs = currentTodos.filter(todo => {
                 if (!todo.text) return false
                 
-                // 생성된 지 10초 미만인 문서는 방금 추가된 것이므로 백필 대상에서 제외 (addTodo가 직접 처리함)
-                // createdAt이 유실/부재된 구형 문서는 0으로 치환하여 무조건 복구 대상에 포함
+                // 이미 분석에 실패했거나 429 쿼터 한도 초과 판정을 받은 문서는 이번 세션에서 중복 요청 격리 차단
+                if (failedDocIdsRef.current.has(todo.id)) return false
+                
+                // 생성된 지 20초 미만인 문서는 방금 추가된 것이므로 백필 대상에서 제외 (addTodo의 실시간 처리가 완료될 시간을 벌어줌)
                 const createdTime = todo.createdAt?.toDate ? todo.createdAt.toDate().getTime() : 0
-                if (nowMs - createdTime < 10000) return false
+                if (nowMs - createdTime < 20000) return false
 
                 return todo.aiProcessed !== true || !todo.tags || todo.tags.length === 0
             })
 
-            if (pendingAiDocs.length > 0) {
+            // 한 번에 모든 미처리 문서를 복구하려 들면 429 쿼터 한계가 터집니다. 
+            // 매 주기마다 최대 2개씩만 조심스럽게 복구하도록 슬라이싱 제어를 가합니다.
+            const sliceDocs = pendingAiDocs.slice(0, 2)
+
+            if (sliceDocs.length > 0) {
                 isBackfillingRef.current = true
-                console.log(`[AI Poller] 미처리 문서 ${pendingAiDocs.length}개 발견. 5초 간격 안전 복원 시작...`)
+                console.log(`[AI Poller] 미처리 문서 ${pendingAiDocs.length}개 발견. (이번 주기 최대 2개 처리 시작...)`)
                 
                 ;(async () => {
                     try {
-                        for (const todo of pendingAiDocs) {
+                        for (const todo of sliceDocs) {
                             try {
                                 // 429 Rate Limit 방어를 위한 5초(5000ms) 강제 대기
                                 await new Promise(resolve => setTimeout(resolve, 5000))
                                 
-                                const result = await analyzeWithGemini(todo.text, apiKeys.gemini || null)
+                                const result = await analyzeWithGemini(todo.text, currentApiKeys.gemini || null)
                                 const todoRef = doc(db, `users/${user.uid}/todos`, todo.id)
                                 
                                 if (result) {
@@ -251,8 +271,15 @@ function App() {
                                 console.log(`[AI Poller] 문서 ${todo.seq || todo.id} 요약 복구 완료`)
                             } catch (err) {
                                 console.warn(`[AI Poller] 문서 ${todo.id} 분석 실패:`, err.message)
+                                failedDocIdsRef.current.add(todo.id) // 실패 격리 캐시에 등록하여 무한 루프 제외
                                 const todoRef = doc(db, `users/${user.uid}/todos`, todo.id)
                                 await updateDoc(todoRef, { aiProcessed: true }).catch(() => {})
+
+                                // 429 Quota Exceeded (할당량 초과) 발생 시, 쿼터 보호를 위해 남은 대기열 처리를 즉시 중단하고 탈출합니다.
+                                if (err.message.includes('429') || err.message.includes('quota') || err.message.includes('Quota')) {
+                                    console.log('[AI Poller] 429 Quota Exceeded 감지 - 남은 백필 대기열 처리를 정지하고 안전하게 탈출합니다.')
+                                    break
+                                }
                             }
                         }
                     } finally {
@@ -260,10 +287,10 @@ function App() {
                     }
                 })()
             }
-        }, 10000)
+        }, 15000)
 
         return () => clearInterval(backfillInterval)
-    }, [todos, user, apiKeys.gemini])
+    }, [user])
     
 
     // PWA Install Prompt Listener
@@ -443,12 +470,7 @@ function App() {
             })
             setInputValue('')
 
-            // 2. AI 분석 — 백필 루프 작동 여부에 따른 격리 제어 (API 429 방어)
-            if (isBackfillingRef.current) {
-                console.log('[addTodo] AI 백필 복원이 가동 중이므로, 신규 메모 AI 분석을 백필 대기열로 이관합니다. (10초 후 자동 처리)')
-                return
-            }
-
+            // 2. AI 분석 — 백필 루프 가동 상태와 상관없이 사용자가 입력한 신규 메모는 최우선(Priority)으로 즉시 실시간 분석을 수행합니다.
             analyzeWithGemini(cleanedText, apiKeys.gemini || null)
                 .then(async (result) => {
                     if (result) {
@@ -468,6 +490,7 @@ function App() {
                 })
                 .catch(err => {
                     console.warn('Gemini 분석 실패:', err.message)
+                    failedDocIdsRef.current.add(docRef.id) // 실패 격리 캐시에 등록
                     updateDoc(doc(db, `users/${user.uid}/todos`, docRef.id), {
                         aiProcessed: true
                     }).catch(() => {})
@@ -764,6 +787,14 @@ function App() {
                     successDestinations.push(destination)
                 } else {
                     let errMsg = result?.error || '알 수 없는 오류'
+                    
+                    // 구글 캘린더 전송 시 만료 토큰(401) 자동 감지 및 정리 (Re-auth 팝업 유도)
+                    if (destination === 'calendar' && (errMsg.includes('401') || errMsg.includes('invalid credentials') || errMsg.includes('authentication') || errMsg.includes('credential'))) {
+                        setGoogleAccessToken('')
+                        localStorage.removeItem('alia-bot-google-access-token')
+                        errMsg = '구글 로그인 인증 세션이 만료되었습니다. 안전하게 만료된 토큰을 비웠으니, 다시 한 번 전송 버튼을 클릭하여 구글 로그인 인증을 갱신해 주세요.'
+                    }
+                    
                     if (destination === 'obsidian') {
                         errMsg += ' (옵시디언 전송 실패: PC에서 옵시디언이 켜져있고 Local REST API 플러그인이 활성화되어 있는지 확인해 주세요.)'
                     }

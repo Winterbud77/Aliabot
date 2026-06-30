@@ -101,7 +101,13 @@ async function analyzeWithGeminiDirect(text, apiKey) {
     throw new Error('Gemini 응답이 비어있습니다.');
   }
 
-  return parseGeminiJson(rawText);
+  console.log('[Gemini Raw Response Object]:', rawText);
+
+  try {
+    return parseGeminiJson(rawText);
+  } catch (parseErr) {
+    throw new Error(`JSON 추출 실패. 원본 응답 요약: ${rawText.substring(0, 100)}... (사유: ${parseErr.message})`);
+  }
 }
 
 /**

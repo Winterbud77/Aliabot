@@ -1,0 +1,22 @@
+# Git Commit Message Rules
+When generating git commit messages, always follow these guidelines:
+
+1. **Format Pattern**:
+   `<type>: <short summary of changes in English> (<Korean translation and core detail>)`
+
+2. **Types of Commit**:
+   - `feat`: New feature or major functional update
+   - `fix`: Bug fix or security patch
+   - `docs`: Documentation updates (Markdown files, guides)
+   - `refactor`: Structural code cleanup with no behavior change
+   - `chore`: Internal tool updates, package locks, build process modifications
+   - `style`: Formatting, semi-colons, variable naming alignments with no logic change
+
+3. **Examples**:
+   - `feat: optimize AI memo analysis and resolve Google Calendar OAuth 401 token issue (AI 메모 분석 최적화 및 구글 캘린더 토큰 만료 이슈 해결)`
+   - `fix: correct react state initialization order in App.jsx (App.jsx 파일 내 상태 변수 초기화 순서 오류 수정)`
+   - `docs: update deployment and synchronization guides (배포 및 동기화 가이드 문서 최신화)`
+
+4. **Tone & Constraints**:
+   - Keep the English part clear, using imperative present tense (e.g., "add", "fix", "optimize").
+   - Ensure the Korean translation in parentheses is natural, professional, and captures the core resolution context.

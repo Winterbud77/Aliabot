@@ -73,20 +73,30 @@ async function analyzeTextWithGemini(apiKey, text) {
   if (!trimmed) {
     throw new Error('분석할 메모 텍스트가 비어 있습니다.');
   }
-  if (!apiKey) {
+  const cleanApiKey = (apiKey || '').trim();
+  if (!cleanApiKey) {
     throw new Error('서버 Gemini API 키가 설정되지 않았습니다.');
   }
 
   const seoulTime = getSeoulNowISOString();
-  const requestUrl = `${GEMINI_API_URL}?key=${apiKey}`;
+  const requestUrl = `${GEMINI_API_URL}?key=${cleanApiKey}`;
   const response = await fetch(requestUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': 'https://aistudio.google.com/',
+      'Origin': 'https://aistudio.google.com'
+    },
     body: JSON.stringify({
       contents: [{ parts: [{ text: buildAnalysisPrompt(trimmed, seoulTime) }] }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 4096,
+        responseMimeType: "application/json",
+        thinkingConfig: {
+          thinkingBudget: 0
+        }
       },
     }),
   });

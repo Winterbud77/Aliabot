@@ -1008,11 +1008,47 @@ input:focus {
   
   .header-actions {
     width: 100%;
-    flex-wrap: wrap;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
   }
 
-  .btn-google-sync, .btn-admin-db {
-    flex: 1;
+  /* 모바일 헤더 버튼들의 세로 찌그러짐 방지 및 균등 정렬 */
+  .header-actions button,
+  .header-actions .btn-user-manual,
+  .header-actions .btn-settings,
+  .header-actions .btn-admin-db,
+  .header-actions .btn-google-sync {
+    height: 38px !important;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    margin: 0;
+    font-size: 0.82rem;
+  }
+
+  .btn-user-manual {
+    flex: 1.5;
+  }
+  
+  .btn-settings {
+    flex: 0 0 38px;
+    width: 38px;
+    padding: 0;
+    font-size: 1rem;
+  }
+
+  .btn-admin-db {
+    flex: 1.2;
+    justify-content: center;
+  }
+
+  .btn-google-sync {
+    flex: 1.5;
     justify-content: center;
   }
 

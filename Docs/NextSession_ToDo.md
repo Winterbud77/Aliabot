@@ -28,6 +28,8 @@
   * 대시보드 설정 모달에 `Notion API Token`, `Database ID` 등을 안전하게 저장하고, 메모를 내보낼 때 노션 데이터베이스의 프로퍼티에 맞추어 정확하게 안착하도록 노션 API 채널 최종 활성화.
 * **Mobile PWA Cross-Device Verification (모바일 PWA 교차 검증)**:
   * 실배포된 PWA 주소(`https://react-todo-d3fcc.web.app`)에 사용자의 모바일 스마트폰 기기로 접속하여, 실시간 메모 등록 및 캘린더/이메일/옵시디언 전송이 백그라운드 쿼터 오류(429)나 크래시 없이 물 흐르듯 가동되는지 사용자 관점 실기 테스트 진행.
+* **Obsidian Cross-Device Proxy (옵시디언 크로스 디바이스 프록시 설계)**:
+  * 모바일 PWA(HTTPS)에서 로컬 PC의 옵시디언(HTTP/127.0.0.1)으로 직접 전송 시 발생하는 혼합 콘텐츠(Mixed Content) 차단 및 루프백 접근 불가 문제를 극복하기 위해, Firestore에 Obsidian 전송 플래그를 생성하고, PC에서 구동 중인 로컬 브라우저가 이를 감지하여 로컬 REST API로 대신 릴레이(Relay)해 주는 영농 특화 프록시 동기화 파이프라인 개발을 계획합니다.
 
 ---
 

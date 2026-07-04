@@ -3,7 +3,7 @@ import { auth, db, googleProvider } from './firebase'
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth'
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore'
 import { parseCommand } from './utils/parser'
-import { sendToObsidian } from './api/obsidian'
+import { sendToObsidian, sendToObsidianViaDeepLink } from './api/obsidian'
 import { sendToNotion } from './api/notion'
 import { analyzeWithGemini } from './api/gemini'
 import { insertCalendarEvent } from './api/calendar'
@@ -67,6 +67,9 @@ function App() {
             notionDatabaseId: '',
             notionTitleProperty: 'Title',
             notionContentProperty: 'Content',
+            // Obsidian 설정을 위한 추가 (Phase 5.8)
+            obsidianMode: 'deepLink', // 'deepLink' | 'localRest'
+            obsidianVaultName: '',
             ...parsed,
         }
     })
@@ -720,7 +723,11 @@ function App() {
                 let result = null
                 if (destination === 'obsidian') {
                     const eventDetails = todo.metadata?.parsedEvent || null
-                    result = await sendToObsidian(todo.text, '', eventDetails)
+                    if (apiKeys.obsidianMode === 'localRest') {
+                        result = await sendToObsidian(todo.text, '', eventDetails)
+                    } else {
+                        result = await sendToObsidianViaDeepLink(todo.text, '', eventDetails, apiKeys.obsidianVaultName)
+                    }
                 } else if (destination === 'notion') {
                     result = await sendToNotion({
                         text: todo.text,
@@ -1362,6 +1369,44 @@ function App() {
                                 onChange={e => setApiKeys({...apiKeys, notionContentProperty: e.target.value})}
                             />
                         </div>
+
+                        <div className="settings-group">
+                            <label>Obsidian 연동 모드</label>
+                            <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                                    <input 
+                                        type="radio" 
+                                        name="obsidianMode" 
+                                        value="deepLink" 
+                                        checked={apiKeys.obsidianMode !== 'localRest'} 
+                                        onChange={e => setApiKeys({...apiKeys, obsidianMode: 'deepLink'})}
+                                    />
+                                    <span>딥링크 모드 (기본/추천)</span>
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                                    <input 
+                                        type="radio" 
+                                        name="obsidianMode" 
+                                        value="localRest" 
+                                        checked={apiKeys.obsidianMode === 'localRest'} 
+                                        onChange={e => setApiKeys({...apiKeys, obsidianMode: 'localRest'})}
+                                    />
+                                    <span>Local REST API 모드</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {apiKeys.obsidianMode !== 'localRest' && (
+                            <div className="settings-group">
+                                <label>Obsidian Vault Name (보관소 이름 — 선택)</label>
+                                <input
+                                    type="text"
+                                    placeholder="비워두면 마지막으로 활성화된 보관소로 저장"
+                                    value={apiKeys.obsidianVaultName || ''}
+                                    onChange={e => setApiKeys({...apiKeys, obsidianVaultName: e.target.value})}
+                                />
+                            </div>
+                        )}
 
                         <button className="btn-primary-action" onClick={() => setShowSettingsModal(false)}>
                             저장 및 닫기

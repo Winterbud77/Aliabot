@@ -167,4 +167,92 @@ exports.sendEmailViaFunctions = onCall(
 // });
 
 // Force redeployment to clear instance caching of GEMINI_API_KEY and EMAIL_API_KEY
-// Redeployed on: 2026-06-25T05:56:00Z (Fixed getSeoulNowISOString comment syntax)
+// Redeployed on: 2026-07-04T15:42:00Z (Added sendToNotionViaFunctions for CORS bypass)
+
+/**
+ * 지인/호스트 메모를 지정된 노션 데이터베이스에 적재 (CORS 우회용 프록시)
+ */
+exports.sendToNotionViaFunctions = onCall(
+  {
+    region: FUNCTION_REGION,
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    assertEmailAllowed(request.auth.token.email);
+
+    const {
+      text,
+      tags,
+      summary,
+      notionToken,
+      databaseId,
+      titleProperty = 'Title',
+      contentProperty = 'Content',
+    } = request.data || {};
+
+    if (!notionToken || !notionToken.trim()) {
+      throw new HttpsError('invalid-argument', 'Notion API Token이 설정되지 않았습니다.');
+    }
+    if (!databaseId || !databaseId.trim()) {
+      throw new HttpsError('invalid-argument', 'Notion Database ID가 설정되지 않았습니다.');
+    }
+
+    const title = text ? text.split(/\r?\n/).filter(Boolean)[0] || 'AliaBot 메모' : 'AliaBot 메모';
+    const cleanTitle = title.length > 200 ? title.slice(0, 200) + '…' : title;
+
+    const content = [
+      summary ? `요약: ${summary}` : null,
+      tags && tags.length ? `태그: ${tags.map((t) => `#${t}`).join(' ')}` : null,
+      String(text || '').trim(),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    try {
+      const response = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${notionToken}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          parent: { database_id: databaseId },
+          properties: {
+            [titleProperty]: {
+              title: [{ text: { content: cleanTitle } }],
+            },
+            [contentProperty]: {
+              rich_text: [
+                {
+                  text: {
+                    content: content.length > 20000 ? content.slice(0, 20000) + '…' : content,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      });
+
+      const resText = await response.text();
+      let resJson = {};
+      try {
+        resJson = JSON.parse(resText);
+      } catch (e) {}
+
+      if (!response.ok) {
+        console.error('[Notion API Error Output]', resText);
+        throw new Error(resJson?.message || `노션 API 전송 실패 (Status: ${response.status})`);
+      }
+
+      return { success: true, data: resJson };
+    } catch (error) {
+      console.error('[sendToNotionViaFunctions Error]', error);
+      throw new HttpsError('internal', error.message || '노션 API 전송 중 오류가 발생했습니다.');
+    }
+  }
+);

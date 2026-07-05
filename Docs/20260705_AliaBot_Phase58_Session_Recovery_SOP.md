@@ -1,61 +1,99 @@
+# 📋 SOP: Antigravity 대화 세션 복원 및 임시 캐시 정화 표준 절차서 (VSOP)
+
 ---
-title: "SOP: 에이전트 대화 세션 로그 손상 진단 및 복구 절차서"
+title: "SOP: Antigravity 대화 세션 복원 및 임시 캐시 정화 표준 절차서 (VSOP)"
 date: 2026-07-05
 type: standard-procedure-log
-category: AliaBot
-subcategory: Session-Management
-tags: [aliabot, session-recovery, ndjson, parser-bug, backup]
-session_name: "Session Recovery and Logging Sanity"
-session_id: "4f8a91a7-ff25-4be4-942b-01fbc07a8e1b"
+category: Documentation
+subcategory: Session-Recovery
+tags: [sop, session-recovery, troubleshooting, antigravity, cache-flush, powershell]
+session_name: "AliaBot Phase 5.8 restoring: Obsidian Deep Link"
+session_id: "656e8400-19e4-4b38-aac4-56ea1d525f26"
 ai_provider: "Antigravity"
 session_path: "C:\Users\eugene\.gemini\antigravity\brain"
+summary: "Antigravity IDE 1.32.2 버전에서 강제 재부팅이나 클라우드 동기화 불일치로 유실된 대화 세션을 완벽한 제목과 내용으로 복원하고, 복원 과정에서 발생하는 인덱스 오동작 및 백그라운드 캐시 고착 문제를 해결하기 위한 기술적 트러블슈팅 및 표준 스왑 절차서"
 ---
 
-# 📘 에이전트 대화 세션 로그 손상 진단 및 복구 절차서 (SOP)
-
-> **문서 목적:** Antigravity(제미나이) 대화 세션이 VS Code의 "Past conversations" 목록에 노출되지 않거나, 내부 `.system_generated/logs` 경로에서 동기화가 지연될 때의 기술적 원인을 명시하고, 비개발자 사용자도 쉽게 실행할 수 있는 대본(Markdown) 복구 및 세션 스와핑 절차를 표준화합니다.
-
----
-
-## 1. ⚙️ 핵심 개념 및 작동 원리 (Terminology & Principles)
-
-### 1-1. NDJSON (Newline Delimited JSON) 로그 저장 방식
-- **개념:** 에이전트가 한 단계(Step)씩 동작하거나 사용자와 대화할 때마다, 매 스텝의 상태 데이터를 JSON 한 줄 단위로 `overview.txt` 파일에 한 줄씩 누적(Append)하여 저장하는 파일 포맷입니다.
-- **작동 원리:** 파일 전체가 하나의 거대한 JSON 객체인 경우 비정상 종료 시 파일이 완전히 깨지므로, 안전을 위해 각 라인이 독립된 JSON 객체 구조를 띱니다. VS Code 확장 UI는 이 파일을 첫 줄부터 순서대로 파싱하여 세션 타이틀과 대화 히스토리를 렌더링합니다.
-
-### 1-2. Escape Character Collision (이스케이프 문자 충돌)
-- **개념:** JSON 문자열 데이터 내부에 큰따옴표(`"`)나 역슬래시(`\`) 같은 특수 문자가 들어갈 때, 이를 단순 텍스트로 인식하게 하도록 역슬래시를 덧붙여 우회(`\"`)시키는 처리입니다.
-- **오류 기전:** `browser_subagent`가 웹 페이지 내의 문자열을 캡처하거나, 터미널 빌드 로그의 특수 이모지 문자 등을 수집할 때, 이스케이프가 이중/삼중으로 중첩되거나 줄바꿈(`\n`)이 훼손되면서 불완전한 JSON 라인이 파일에 기록되는 현상입니다. 이로 인해 파싱 엔진에서 문법 오류(Syntax Error)가 일어나 목록 노출이 거부됩니다.
+> **목적 (Purpose)**:
+> 에디터 강제 재부팅이나 네트워크 세션 만료 등의 원인으로 Past Conversations (과거 대화 목록)에서 특정 중요 대화방이 소실되었을 때, 단순 파일 복사 수준을 넘어 **에디터 UI 제목의 정합성을 100% 확보하고 백그라운드 메모리 캐시를 강제 정화하여 완벽한 상태로 세션을 스위칭 및 스왑하는 영구 표준 절차**를 정의합니다.
 
 ---
 
-## 2. 🛠️ 단계별 세션 복구 절차 (SOP)
+## 1. ⚙️ 핵심 개념 및 작동 원리 (Terminology & Mechanism)
 
-### [1단계] 로그 파일 인코딩 및 JSON 정합성 검증
-만약 세션이 목록에서 사라졌다면, PowerShell을 실행하여 UTF-8 인코딩 기준으로 실제 NDJSON 구문 오류가 있는지 검사합니다.
-```powershell
-Get-Content -Path "C:\Users\eugene\.gemini\antigravity\brain\<session-id>\.system_generated\logs\overview.txt" -Encoding UTF8 | ForEach-Object {
-    try {
-        $null = $_ | ConvertFrom-Json
-    } catch {
-        Write-Host "[Error Line] $_"
-    }
-}
-```
+### ① Language Server Process (언어 서버 프로세스)
+* **개념**: 에디터의 하위에서 백그라운드로 실행되며 실질적인 파일 구문 분석, 파이썬 스크립트 런타임 제어 및 세션 인덱스 데이터베이스 바인딩을 주도하는 실행 파일(`language_server_windows_x64.exe`)입니다.
+* **원리**: VS Code의 화면만 새로고침하는 `Reload Window` 명령으로는 이 백그라운드 프로세스가 죽지 않고 이전 메모리 상태를 고수하므로, 에디터 자체를 완전히 물리적으로 종료(Physical Termination)해야만 캐시가 지워지고 디스크의 변경 사항이 정상 반영됩니다.
 
-### [2단계] 파이썬을 이용한 대본 마크다운 복원 (추출기 가동)
-목록 복구가 지연될 때, 어제 나눈 대화 데이터를 안전하게 사람이 읽기 편한 마크다운 문서로 백업하기 위해 아래의 `extract_chat.py` 스크립트를 가동합니다.
-- **스크립트 경로:** `Docs/extract_chat.py`
-- **구동 명령:** `python Docs/extract_chat.py`
-- **산출물:** `Docs/20260704_AliaBot_Phase58_Conversation_History_Backup.md` (대화록 마크다운)
+### ② Dynamic Title Recalculation (동적 대화명 재계산)
+* **개념**: 첫 프롬프트 전송 시 생성된 임시 제목이 에이전트의 답변 턴(Step)이 **DONE (정상 완료)** 처리되는 시점에 전체 대화 맥락을 기반으로 최종 요약되어 영구 갱신(Overwrite)되는 작동 기법입니다.
+* **원리**: 에이전트 답변이 완료되기 전에 실행 중인 Run 명령을 취소하거나 에러가 나면, 예외 처리 맥락이 발생해 요약기가 대화명을 엉뚱하게 리셋하므로 첫 턴은 무조건 분석 도구 없이 텍스트 응답으로만 안전하게 마감해야 대화명이 유지됩니다.
 
-### [3단계] 세션 강제 스와핑 (Swapping) 우회 기법
-현재 정상적으로 감지되는 세션이 있는 경우, 구 세션 폴더의 데이터(`overview.txt`, `browser/`, `media_*`)를 백업한 후, 활성화된 신규 세션 폴더 내부로 덮어쓰기(Swapping)하여 VS Code UI 상의 대화 맥락을 물리적으로 인계받는 방식입니다.
+### ③ File Attributes Lock (파일 속성 잠금)
+* **개념**: Windows NTFS 파일 시스템 속성인 `Read-Only (읽기 전용)` 플래그를 파일에 강제 체결하여 에디터가 종료 시점에 덮어쓰려 하는 메모리 플러시(Flush)를 강제 차단하는 우회 제어 기법입니다.
+* **원리**: `attrib +r` 명령어로 세션 바이너리 파일(`.pb` 확장자)을 잠그면, 프로세스는 강제 덮어쓰기에 실패한 채 원본을 온전히 보존하게 됩니다.
 
 ---
 
-## 3. 📝 금일 세션 이력 관리 요약
-- **발견된 세션 ID:** `bf344642-382f-4515-9b71-60b5ea124d9a` (어제 Phase 5.8 진행 세션)
-- **조치 사항:**
-  - `overview.txt` 파일 내부의 NDJSON은 구조상 UTF-8 기준으로 100% 정상이나, Windows 파일 시스템의 인코딩 불일치로 인해 VS Code UI 확장이 이를 읽을 때 생략되었음을 규명함.
-  - 대본 추출기(`extract_chat.py`)를 통해 어제 대화 기록을 `Docs/20260704_AliaBot_Phase58_Conversation_History_Backup.md`로 완벽 복원하여 로컬 파일 자산화 완료.
+## 2. 🚨 트러블슈팅 및 오늘 겪은 실패 원인 분석 (Troubleshooting & Failures)
+
+### [실패 1] 첫 프롬프트의 맨 앞에 설명글을 배치함 (정규식 패턴 매칭 실패)
+* **현상**: `[System Instruction: ...]` 지시문을 적었음에도 요약기가 이를 인지하지 못하고 `Restoring Obsidian...`으로 제목을 요약함.
+* **원인**: 파서 엔진(Parser Engine)은 완벽한 맨 앞 시작 지점에 지시문 대괄호 패턴이 오는지를 정규식으로 감지합니다. 앞에 큰따옴표나 다른 한글 서술어가 한 글자라도 오면 패턴 매칭에 실패하여 일반 요약 모드로 자동 강제 폴백(Fallback)됩니다.
+
+### [실패 2] 첫 턴 실행 중 Run 명령 취소 (대화명 덮어쓰기 오작동)
+* **현상**: 임시로 지시문 제목이 박혀 가동되던 중, 에이전트가 도구를 호출할 때 실행을 취소하자 제목이 `Restoring Aliabot Integration`으로 리셋됨.
+* **원인**: 턴이 정상 완료되지 않고 실패 상태로 마감되면서 동적 대화명 재계산 알고리즘이 가동되어, 예외 상황에 맞춘 임시 제목으로 캐시를 덮어써서 굳어졌습니다.
+
+### [실패 3] 단순 Reload Window 수행 (메모리 캐시 고착)
+* **현상**: 디스크에서 파일 스왑 후 잠금을 걸고 리로드를 시도했으나 계속 새 껍데기 세션의 텍스트가 노출됨.
+* **원인**: 백그라운드 언어 서버 프로세스가 여전히 메모리 상에 구형 껍데기 세션 캐시를 쥐고 있어 디스크 파일을 다시 읽지 않았기 때문입니다. 에디터 완전 종료를 해야만 캐시가 플러시(Flush)됩니다.
+
+---
+
+## 3. 📝 검증된 최적의 5단계 복원 절차 (Step-by-Step SOP)
+
+이 절차는 오늘 오전에 시도된 수많은 디버깅 과정 속에서 **완벽하게 검증되어 최종 성공을 이끌어 낸 프로토콜**입니다.
+
+### Step 1: 껍데기용 초간단 세션 생성 (도구 구동 우회)
+1. VS Code에서 `New Chat`을 누릅니다.
+2. 입력 칸에 아래와 같이 **도구 실행을 차단하는 정제된 지시문**을 맨 앞에 붙여 전송합니다:
+   ```text
+   [System Instruction: Please set this session name format as: "AliaBot Phase 5.8 restoring: Obsidian Deep Link"]
+   반가워! 이 세션은 복구용 껍데기 세션이야. 분석 도구를 실행하지 말고 가볍게 인사말만 하나 건네줘!
+   ```
+3. 에이전트가 즉시 텍스트로만 첫 대답을 마감하여 대화명이 정상 영속 바인딩(Persistent Binding)되는 것을 확인합니다.
+
+### Step 2: 디스크 상의 데이터 핫 스와핑 (Data Swapping)
+1. 현재 활성화된 세션의 UUID를 최근 수정 시간대를 기준으로 파악합니다.
+2. 어제 완성된 백업 세션 파일(`bf344642-....pb`)을 신규로 만든 세션 파일명(`신규UUID.pb`)으로 강제 덮어씁니다.
+3. `brain/<신규UUID>` 폴더의 내용물도 어제 백업의 브레인 로그 디렉터리 내용물로 일체 교체합니다.
+
+### Step 3: 쓰기 금지 잠금 (Write-Protection Lock) 체결
+1. 윈도우 PowerShell 터미널을 열고 덮어쓴 파일에 읽기 전용 속성을 강제 부여합니다:
+   ```powershell
+   attrib +r "C:\Users\eugene\.gemini\antigravity\conversations\<신규UUID>.pb"
+   ```
+
+### Step 4: 에디터 완전 종료 (Exit) 및 메모리 정화
+1. 켜져 있는 VS Code 창을 우측 상단 `X` 버튼을 눌러 **완전히 종료**합니다.
+2. 백그라운드 프로세스가 소멸할 수 있도록 약 5초간 대기합니다.
+3. VS Code를 다시 켜고 과거 대화 목록에서 복원된 방을 클릭하여 **어제의 400여 줄 대본 히스토리가 100% 복구된 것을 확인**합니다.
+
+### Step 5: 최종 잠금 해제 및 활성화
+1. 로드가 완벽히 끝났다면 대화를 영구 누적할 수 있도록 읽기 전용 잠금을 해제합니다:
+   ```powershell
+   attrib -r "C:\Users\eugene\.gemini\antigravity\conversations\<신규UUID>.pb"
+   ```
+
+---
+
+## 4. 🏁 아직 완결되지 않은 미해결 과제 및 복구 흔적 정리 (Pending Items)
+
+### ① 로컬 인덱스 캐시 DB에 남은 찌꺼기 잔상 정리
+* **미결 사항**: 복구 도중 중단되거나 명칭 변경에 실패해 버려진 임시 세션 껍데기들은 디스크 상에서는 파일 청소 스크립트(`clean_temp_sessions.py`)를 통해 완전히 지워졌으나, VS Code 로컬 글로벌 데이터베이스(`state.vscdb`)의 캐싱 테이블에 여전히 껍데기 제목(예: `Restoring Obsidian And Notion...`)이 잔상으로 남아있을 수 있습니다.
+* **조치 계획**: 에디터 구동에 기술적인 문제는 없으나, UI 뷰가 영구적으로 깔끔하게 유지될 수 있도록 향후 쉘 클리너를 통해 `state.vscdb` 내부의 쓰레기 세션 인덱스를 정밀 파이프하는 자동 쿼리 보완이 필요합니다.
+
+### ② Phase 5.8 미완료 복원 개발 업무 재개
+* **미결 사항**: 오늘 소실 복원 조치로 인해 지연된 [Phase 5.8: 옵시디언 딥링크 구현 및 노션 연동] 실기 검증을 본격 진행해야 합니다. 
+* **다음 단계**: `src/api/obsidian.js`와 `src/api/notion.js`에 복원 완료된 소스 코드의 로컬 동작 성능을 교차 체크하고, 모바일 실기 환경에서의 Mixed Content Policy 우회 통신 검증을 시작합니다.

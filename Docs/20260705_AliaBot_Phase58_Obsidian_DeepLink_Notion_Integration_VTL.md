@@ -1,9 +1,16 @@
-# 📘 Value Technology Log (VTL) & Standard Operating Procedure (VSOP)
-## Phase 5.8: 옵시디언 딥링크(Obsidian URI) 도입 및 노션(Notion) 우회 연동 완결
+---
+created_at: 2026-07-05
+agent_model: Gemini 1.5 Pro (Antigravity Agent)
+ide: Antigravity Code Editor
+session_name: "AliaBot Phase 5.8: Obsidian Deep Link & Notion Integration"
+session_id: "bf344642-382f-4515-9b71-60b5ea124d9a"
+session_path: "C:\Users\eugene\Projects\Work01_Anti"
+---
 
-> **문서 정보**
-> * **작성일**: 2026년 7월 5일
-> * **목적**: HTTPS 모바일 PWA 환경의 샌드박스 차단 정책을 극복하고, 노션(Notion) API의 CORS 제약을 극복한 설계 사고 과정과 상세한 사용자 연동 표준 운영 매뉴얼(SOP)을 보존함.
+# 📘 Value Technology Log (VTL)
+## Phase 5.8: 옵시디언 딥링크(Obsidian URI) 도입 및 노션(Notion) 우회 연동 설계로그
+
+본 문서는 HTTPS 모바일 PWA 환경의 브라우저 보안 샌드박스(Sandbox) 정책 및 노션(Notion) API의 CORS 제약을 원천 극복한 무선 연동 아키텍처 설계 배경과 핵심 기술 지식을 보존합니다.
 
 ---
 
@@ -11,9 +18,14 @@
 
 ```mermaid
 graph TD
-    A[PWA Client (HTTPS)] -->|1. OS Protocol Handler| B[Obsidian Native App]
-    A -->|2. Callable Cloud Functions| C[Firebase Serverless Backend]
+    A[PWA Client (HTTPS Vercel)] -->|1. OS Protocol Handler| B[Obsidian Native App (Local)]
+    A -->|2. Callable Cloud Functions (Relay)| C[Firebase Serverless Backend (SSL)]
     C -->|3. HTTPS Request Bypass CORS| D[Notion API Server]
+    
+    style A fill:#bfdbfe,stroke:#2563eb,stroke-width:2px
+    style B fill:#bbf7d0,stroke:#16a34a,stroke-width:2px
+    style C fill:#fef08a,stroke:#ca8a04,stroke-width:2px
+    style D fill:#fed7aa,stroke:#ea580c,stroke-width:2px
 ```
 
 ### ① 옵시디언 연동: Mixed Content (혼합 콘텐츠) 차단 극복
@@ -28,58 +40,7 @@ graph TD
 
 ---
 
-## 2. 📝 Notion 연동 표준 운영 절차서 (VSOP)
-
-사용자님이 실제 연동 시 직면하셨던 스크린샷과 디버깅 교훈을 엮은 가장 확실한 연동 절차서입니다.
-
-### [1단계] Notion API 연결(Connection) 생성 및 액세스 토큰 획득
-1. 웹 브라우저에서 [Notion Developers Connections 포털](https://app.notion.com/developers/connections)로 접속합니다.
-2. 파란색 **`+ 신규 연결`** 버튼을 클릭합니다.
-3. 연결 이름란에 **`AliaBot`** 이라고 적고 저장을 완료합니다.
-4. 화면에 생성된 **`내부 통합 토큰` (또는 비공개 액세스 토큰)**을 복사합니다.
-   > [!IMPORTANT]
-   > 토큰을 입력할 때는 맨 앞의 접두어인 **`ntn_`을 포함한 전체 문자열**을 그대로 복사하여 입력해야 합니다. 접두어가 빠지면 노션 보안 시스템이 인증 거부(401 Unauthorized)를 반환합니다.
-
----
-
-### [2단계] 메모를 보관할 표(Database) 생성 및 열 이름 설정
-1. 본인의 노션 워크스페이스에 빈 페이지를 생성하고, 본문 입력창에서 **`/table`** 혹은 **`/표`**를 타이핑합니다.
-2. 팝업 메뉴에서 단순 표 레이아웃 대신 **`표 보기 · 데이터베이스`** 항목을 클릭합니다.
-3. 우측에 생성된 옅은 파란색의 **`새로 만들기`** 버튼을 클릭하여 완전한 표를 화면에 인스턴스화합니다.
-   > [!CAUTION]
-   > 일반 텍스트 문서 상단의 속성 추가 기능(`+ Add a property`)을 사용하면 안 되며, 반드시 본문 격자 형태의 **'표 보기 데이터베이스'**를 삽입하셔야 합니다.
-4. 기본으로 생성되는 첫 번째 열인 **`Aa 이름`**을 클릭하고 이름을 **`Title`**로 변경합니다. (유형: 제목)
-5. `Title` 열 헤더의 바로 오른쪽 옆에 있는 **`+` (플러스)** 아이콘을 클릭하여 새 열을 생성하고, 유형을 **`텍스트` (Text)** 로 설정한 뒤 이름을 **`Content`** 라고 수정합니다. (프로그램 상의 키값 매핑 목적)
-
----
-
-### [3단계] 데이터베이스 ID 추출 및 권한 1:1 부여
-1. 완성된 표의 링크를 복사하여 데이터베이스 ID(32자리 UUID)를 추출합니다:
-   * 복사한 링크 예시: `https://www.notion.so/myworkspace/`**`394bed8a5dfd80e38e74d1c8295d156c`**`?v=...`
-   * 중간에 들어간 32자리 문자열 `394bed8a5dfd80e38e74d1c8295d156c`가 **`Database ID`** 입니다.
-2. **보안 권한 부여 (Connection Sharing)**:
-   * 대상 페이지의 우측 최상단 **`공유`** ➡️ `연결 추가` 또는 **`점 3개 (···)`** ➡️ **`연결 추가`** 메뉴를 클릭합니다.
-   * 검색창에 **`AliaBot`**을 타이핑하고, 자동 완성된 봇 계정을 클릭한 후 "이 페이지에 AliaBot 추가" 알림 창에서 **`확인`**을 누릅니다.
-   > [!NOTE]
-   > 이 과정을 누락하면 노션 API 전송 시 `Could not find database with ID...` 오류가 발생합니다. 링크가 있는 웹의 모든 사용자에게 전체 공개하지 않고 1:1 연결 추가를 통해서만 안전하게 통신 문을 개방해야 합니다.
-
----
-
-### [4단계] AliaBot 설정 저장 및 전송 검증
-1. AliaBot 대시보드의 우측 상단 **⚙️ 설정** 창을 클릭합니다.
-2. 아래 정보를 각각 기입합니다:
-   * **Notion API Token**: `ntn_`을 포함한 전체 API 토큰 기입
-   * **Notion Database ID**: 추출한 32자리 문자열 기입
-   * **Notion Title Property**: `Title`
-   * **Notion Content Property**: `Content`
-   * **Obsidian Vault Name**: `Winterbud-03MS` (사용자님의 옵시디언 보관소 이름)
-3. 하단의 **`저장 및 닫기`** 버튼을 누릅니다.
-4. 메모장에 `!노션 !옵시디언 새로운 PWA 프록시 연동 테스트`를 입력해 카드를 생성한 뒤, 내보내기(📤) 버튼을 눌러 두 채널을 선택하고 전송합니다.
-5. 화면에 파란색 성공 마크와 함께 **`전송 완료: CLIPBOARD, NOTION`** 팝업 메시지가 노출되는지 확인합니다.
-
----
-
-## 3. 🛠️ 트러블슈팅 이력 (Troubleshooting Log)
+## 2. 🛠️ 트러블슈팅 이력 (Troubleshooting Log)
 
 ### ① 에러 메시지: `Notion API Token이 설정되지 않았습니다`
 * **원인**: 설정창에 노션 정보가 공란일 때 비동기 로직이 가동되는 것을 미연에 방지한 자가 검증 결과.
@@ -89,9 +50,16 @@ graph TD
 * **원인**: 노션의 페이지 1:1 공유 정책에 의해 `AliaBot` 커넥션이 대상 데이터베이스 표 페이지에 권한 부여되지 않은 상태.
 * **대처**: 페이지 우측 상단의 `점 3개` ➡️ `연결 추가` 메뉴를 통해 `AliaBot` 통합 봇을 추가하여 통신로 오픈 완료.
 
----
-session_name: "AliaBot Phase 5.8: Obsidian Deep Link & Notion Integration"
-session_id: "bf344642-382f-4515-9b71-60b5ea124d9a"
-ai_provider: "Antigravity"
-session_path: "C:\Users\eugene\Projects\Work01_Anti\Docs"
----
+### ③ 에러 메시지: `Cannot convert argument to a ByteString because the character at index 8 has a value of 50900 ...`
+* **원인**: HTTP 통신 헤더(Header) 영역은 오직 아스키(ASCII) 문자만 전송할 수 있습니다. PWA 실서버 설정창 입력 도중 한글 자판 상태에서 오타가 들어가면서 9번째 글자 자리에 한글 **`울`**(유니코드 값: 50900)이 삽입되어 브라우저 인코딩 예외가 발생했습니다.
+* **대처**: 설정창의 Notion 토큰 및 ID 필드를 완전히 청소한 후 순수 알파벳과 숫자 조합으로 재기입하여 전송 성공.
+
+### ④ PWA 실서버(Vercel) 접속 시 최초 노션/캘린더 연동 실패 현상
+* **원인**: 브라우저의 **동일 출처 정책(Same-Origin Policy)**에 의해 `localhost`와 `aliabot.vercel.app`은 물리적으로 완전히 격리된 저장소(localStorage)를 지닙니다. 이로 인해 로컬에서 입력한 설정과 세션이 실서버로 자동 동기화되지 않는 보안 명세 때문입니다.
+* **대처**: 실서버 도메인으로 접속한 PWA 화면에서 ⚙️ 설정 창을 열어 노션 정보를 직접 최초 1회 재기입하고, 구글 로그인을 신규 터치하여 인증 세션을 바인딩 완료.
+
+### ⑤ [UI/UX 개선] Localhost와 Live PWA 뷰 식별 장치 추가
+* **원인**: 로컬호스트와 실서버 배포판의 UI 스킨이 동일하여 개발 및 실기 검증 시 오작동 구분이 힘든 환경적 불편 요소가 있었습니다.
+* **대처**:
+  1. **탭 타이틀 영구 고정**: React 생명주기 초기화 시 `localhost` 접속을 감지하여 브라우저 타이틀바를 `AliaBot - My AI Secretary [Localhost:5173]`으로 탭 명칭을 고정 변경.
+  2. **헤더 뱃지 렌더링**: `App.jsx` 헤더의 로고(`AliaBot v2.1`) 바로 옆에 주황색으로 강조된 **`Localhost:5173`** 뱃지를 상시 표기하여 시각적 구별성을 확보.

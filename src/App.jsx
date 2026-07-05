@@ -75,6 +75,12 @@ function App() {
     })
 
     useEffect(() => {
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            document.title = `AliaBot - My AI Secretary [Localhost:${window.location.port || '5173'}]`
+        }
+    }, [])
+
+    useEffect(() => {
         localStorage.setItem('alia-bot-api-keys', JSON.stringify(apiKeys))
     }, [apiKeys])
 
@@ -879,7 +885,24 @@ function App() {
             {/* 상단 고정: 로고·로그인·입력 (#63) */}
             <div className="app-fixed-top">
             <div className="app-header">
-                <h1>AliaBot <span style={{fontSize: '0.4em', color: '#888'}}>v2.1</span></h1>
+                <h1>
+                    AliaBot <span style={{fontSize: '0.4em', color: '#888'}}>v2.1</span>
+                    {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                        <span style={{
+                            fontSize: '0.3em',
+                            marginLeft: '8px',
+                            background: '#f97316',
+                            color: '#fff',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                            verticalAlign: 'middle',
+                            display: 'inline-block'
+                        }}>
+                            Localhost:{window.location.port || '5173'}
+                        </span>
+                    )}
+                </h1>
                 <div className="header-actions">
                     <button
                         className="btn-user-manual"

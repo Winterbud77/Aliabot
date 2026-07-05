@@ -75,3 +75,11 @@ session_path: "C:\Users\eugene\.gemini\antigravity\brain"
   1. 먼저 에디터를 완전히 껐다가 켜서 클라우드 자동 로그인이 정상 처리되는지 확인합니다.
   2. 그래도 보이지 않는 경우, 로컬 디스크(`conversations` 폴더)에 보관된 백업 바이너리(`.pb`)를 이식하는 수동 복원 절차를 수행해야 합니다.
   3. 상세 복원 단계는 [AliaBot 대화 세션 수동 복원 표준 절차서(VSOP)](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260621_AliaBot_Convo_Session_Restore_VSOP.md)를 정독하여 순서대로 이행하십시오.
+
+### Q3. 'Untitled'나 원치 않는 제목으로 고착된 세션명을 직접 강제 수정하고 싶습니다.
+* **원인**: 자동 요약 봇의 인덱싱 지연 혹은 시스템 래핑 오류로 인해 타이틀이 업데이트되지 않고 방치되는 현상입니다.
+* **해결책**:
+  1. Antigravity 우측 상단 툴바의 **`Open Agent Manager`** (에이전트 관리자) 버튼을 클릭합니다.
+  2. 열린 관리자 화면의 대화 세션 프로필 관리 항목에서 해당 세션의 **`Session Name Change`** (세션명 변경) 기능을 실행합니다.
+  3. 원하는 완성형 제목(예: `AliaBot Phase 5.8: ...`)을 직접 입력하여 저장하면, 요약 봇의 오작동과 무관하게 상단 및 히스토리 이름이 즉시 강제 바인딩되어 고정됩니다.
+

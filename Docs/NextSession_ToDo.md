@@ -43,12 +43,14 @@
 사용자님, 새로운 대화창(Conversation Session)을 시작하신 후 첫 프롬프트의 맨 위에 아래 인스트럭션 구문을 그대로 복사해서 붙여넣어 주세요!
 
 ```markdown
+AliaBot Phase 5.9: Mobile PWA Integration Testing & Stabilization
+
 [System Instruction: 
-Please set this session name format as: "AliaBot Phase 5.9: Mobile PWA Integration Testing & Stabilization".
-Extract the core topic from the following instructions and fill it in dynamically.]
+Please set this session name format exactly as: "AliaBot Phase 5.9: Mobile PWA Integration Testing & Stabilization" based on the first line.
+Extract the core topic and ensure the UI title is set exactly as specified in the first line.]
 
 안녕! 우리는 지금 AliaBot(PWA 지휘자 앱) 프로젝트 개발을 진행 중이야.
-작업을 시작하기 전에 프로젝트 폴더 내 `Docs/NextSession_ToDo.md` 파일과 `Docs/20260702_AliaBot_Phase57_Obsidian_Network_Block_VTL.md` 기술 로그를 최우선으로 정독(Parse)하고, 오늘 개발할 아키텍처와 다음 단계인 [Phase 5.9: 모바일 PWA 실기 교차 통합 검증 및 최종 안정화] 목표를 완벽하게 인계받아서 준비되었다고 알려줘!
+작업을 시작하기 전에 프로젝트 폴더 내 `Docs/NextSession_ToDo.md` 파일과 `Docs/20260705_AliaBot_Phase58_Obsidian_DeepLink_Notion_Integration_VTL.md` 기술 로그를 최우선으로 정독(Parse)하고, 오늘 개발할 아키텍처와 다음 단계인 [Phase 5.9: 모바일 PWA 실기 교차 통합 검증 및 최종 안정화] 목표를 완벽하게 인계받아서 준비되었다고 알려줘!
 ```
 
 ---

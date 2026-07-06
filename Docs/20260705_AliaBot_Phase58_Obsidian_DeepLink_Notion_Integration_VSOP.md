@@ -96,3 +96,13 @@ sequenceDiagram
 
 #### 📸 비서 앱 설정창 레퍼런스
 ![AliaBot 설정 기입창](../Docs/Screenshots/202607/20260705_AliaBot_설정창_입력.png)
+
+---
+
+## 📱 모바일 실기 디바이스 최종 전송 연동 검증 (Mobile PWA Multi-Channel Verification)
+실제 갤럭시 스마트폰에서 AliaBot PWA 앱을 기기 홈 화면에 추가한 후, 아래의 통합 연동 시나리오를 검증 완료했습니다:
+1. **⚙️ 통합 설정 (Configuration)**: 모바일 환경에서 Notion Token, Database ID 및 Obsidian Vault 명칭(`Winterbud-03MS`)을 1회 설정하여 로컬 스토리지에 영구 저장했습니다.
+2. **📤 4대 채널 일괄 디스패칭 (Multi-Channel Dispatching)**:
+   * **Notion, Google Calendar, 이메일**: 터치 한 번으로 Vercel 배포 도메인 및 Cloud Functions 프록시 중계 파이프라인을 타고 각각의 타겟 클라우드 저장소에 성공적으로 적재됩니다.
+   * **Obsidian (옵시디언)**: 내보내기 시 `obsidian://new?...` 딥링크 프로토콜 핸들러가 모바일 웹 브라우저의 mixed content 보안 샌드박스를 우회하여 네이티브 옵시디언 앱을 즉각 실행시키고 로컬 노트를 자동 생성합니다.
+

@@ -108,6 +108,7 @@ graph TD
 | **프로젝트 챗 및 REST API** | [Phase 6.0 VTL](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260707_AliaBot_Phase60_GitHub_Project_Chat_Bridge_VTL.md) | 모바일 클라이언트에서 깃허브 API를 긁어오고 챗 렌더링을 처리하는 프론트엔드 연동 원리 기록 |
 | **에이전트 제어 및 리네임** | [Agent Manager VSOP](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260708_Antigravity_Agent_Manager_VSOP.md) | 에이전트 매니저 대시보드의 조작법, 세션명 정리 및 메인 에디터(`Ctrl+E`) 복귀 가이드 |
 | **백그라운드 자동화 방식** | [Automation Plan](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260708_AliaBot_Automation_Architecture_Comparison_Plan.md) | AWS EC2 가상 머신 임대안과 24시간 로컬 PC Actions Runner 활용안의 장단점 및 난이도 상세 분석 기획서 |
+| **로컬 실행기 등록 및 구동** | [Local Runner VSOP](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260708_AliaBot_Local_Runner_Deployment_VSOP.md) | 사무실 PC를 GitHub Actions Self-hosted Runner로 등록하고 Windows Service로 상시 가동하는 절차 |
 | **서버 빌링 및 과금 전략** | [API Billing Plan](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260708_AliaBot_API_Billing_Architecture_Plan.md) | 개발자 고유 API Key 대리 호출 방식에서 일반 배포용 개인 자가 Key 입력(BYOK) 하이브리드로의 고도화 로드맵 |
 | **다중 기기 문서 미러링** | [MultiDevice Sync VSOP](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260625_AliaBot_MultiDevice_Sync_VSOP.md) | 윈도우 전원 관리 최적화, OneDrive의 파일 락을 회피하며 로컬 프로젝트 문서를 옵시디언으로 이관하는 규칙 |
 | **스마트 동기화 스크립트** | [Obsidian Sync SOP](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260617_AliaBot_Phase5_Obsidian_Sync_SOP.md) | 로컬 `Docs/` 파일의 MD5 해시값을 비교하여 변경된 마크다운만 옵시디언 볼트로 실시간 백필하는 스크립트 운용 가이드 |

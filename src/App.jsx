@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { auth, db, googleProvider } from './firebase'
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth'
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp, limit } from 'firebase/firestore'
 import { parseCommand } from './utils/parser'
 import { sendToObsidian, sendToObsidianViaDeepLink } from './api/obsidian'
 import { sendToNotion } from './api/notion'
-import { analyzeWithGemini } from './api/gemini'
+import { analyzeWithGemini, chatWithGemini } from './api/gemini'
+import { fetchProjectContext } from './api/github'
 import { insertCalendarEvent } from './api/calendar'
 import { sendEmail } from './api/mail'
 import { getSuggestedDestinations } from './utils/routingRules'
@@ -19,10 +20,45 @@ import {
 import { buildChronologicalSeqUpdates, looksLikeLegacySeqMismatch, hasDuplicateSeqs } from './utils/seqBackfill'
 import { exportTodosToCSV } from './utils/csvExporter'
 
+// 간단한 마크다운 파서 헬퍼 (Phase 6.0)
+function renderMarkdown(text) {
+    if (!text) return '';
+    
+    // HTML Escape 처리
+    let html = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // 코드 블록 변환
+    html = html.replace(/```([\s\S]*?)```/g, '<pre style="background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 0.85rem; margin: 8px 0; white-space: pre-wrap; word-break: break-all;"><code>$1</code></pre>');
+    
+    // 인라인 코드 변환
+    html = html.replace(/`([^`]+)`/g, '<code style="background: #f1f5f9; color: #ef4444; padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.88em; word-break: break-all;">$1</code>');
+    
+    // 볼드 변환
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // 이탤릭 변환
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // 취소선 변환
+    html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    
+    // 리스트 변환
+    html = html.replace(/^\s*-\s+(.+)$/gm, '<li style="margin-left: 12px; list-style-type: disc;">$1</li>');
+    
+    // 줄바꿈 변환 (br 태그 적용)
+    html = html.replace(/\n/g, '<br/>');
+    
+    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 function App() {
     const [user, setUser] = useState(null)
     const [todos, setTodos] = useState([])
-    const [viewMode, setViewMode] = useState('list') // 'list' | 'table'
+    const [chatMessages, setChatMessages] = useState([]) // 챗 메시지 상태 (Phase 6.0)
+    const [viewMode, setViewMode] = useState('list') // 'list' | 'table' | 'chat'
     const [inputValue, setInputValue] = useState('')
     const [editingId, setEditingId] = useState(null)       // 수정 중인 메모 ID
     const [editingText, setEditingText] = useState('')     // 수정 중인 텍스트
@@ -30,8 +66,10 @@ function App() {
     const [deferredPrompt, setDeferredPrompt] = useState(null)
     const [showInstallBtn, setShowInstallBtn] = useState(false)
     const [isListening, setIsListening] = useState(false)
+    const [isSendingChat, setIsSendingChat] = useState(false) // 챗 전송 중 상태 (Phase 6.0)
     const recognitionRef = useRef(null)
     const inputTextareaRef = useRef(null)       // 메모 입력 textarea
+    const chatEndRef = useRef(null)             // 챗 스크롤 하단용 ref (Phase 6.0)
     const sttBaseTextRef = useRef('')           // 음성 입력 시작 시점의 기존 텍스트
     const sttCommittedRef = useRef('')          // 이번 세션에서 확정(final)된 음성 텍스트
     const sttWantsListeningRef = useRef(false)  // 사용자가 마이크를 끌 때까지 듣기 유지
@@ -70,6 +108,9 @@ function App() {
             // Obsidian 설정을 위한 추가 (Phase 5.8)
             obsidianMode: 'deepLink', // 'deepLink' | 'localRest'
             obsidianVaultName: '',
+            // GitHub Bridge 설정 (Phase 6.0)
+            githubRepo: '',
+            githubToken: '',
             ...parsed,
         }
     })
@@ -202,14 +243,30 @@ function App() {
                     } catch (e) {
                         console.warn('[seq] 보정 처리 실패:', e?.message || e)
                     }
-
-                    // [AI Backfill] onSnapshot 내부 가동 중단 (독립 Poller useEffect로 이전)
                 })
 
-                return () => unsubscribeTodos() // cleanup listener
+                // Firestore 챗 메시지 실시간 구독 (Phase 6.0)
+                const chatQ = query(
+                    collection(db, `users/${currentUser.uid}/chatMessages`),
+                    orderBy('createdAt', 'asc'),
+                    limit(100) // 최근 100개 메시지만
+                )
+                const unsubscribeChats = onSnapshot(chatQ, (snapshot) => {
+                    const chatsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }))
+                    setChatMessages(chatsData)
+                })
+
+                return () => {
+                    unsubscribeTodos()
+                    unsubscribeChats()
+                }
             } else {
                 // 로그아웃 상태일 때
                 setTodos([])
+                setChatMessages([])
                 // 로컬 데이터가 있다면 보여주기 (로그인 유도를 위해)
                 const savedTodos = localStorage.getItem('todos')
                 if (savedTodos) {
@@ -220,6 +277,13 @@ function App() {
 
         return () => unsubscribeAuth()
     }, [])
+
+    // 챗 메시지 변경 또는 뷰 모드 변경 시 하단 고정 스크롤 (Phase 6.0)
+    useEffect(() => {
+        if (viewMode === 'chat' && chatEndRef.current) {
+            chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+    }, [chatMessages, viewMode])
 
     // [AI Backfill Poller] 15초 주기 미처리 AI 데이터 자동 치유 엔진 (Phase 5.7)
     // 의존성 배열에 todos를 제외하여 상태 변경에 따른 불필요한 타이머 해제 및 재등록(리셋 버그)을 완벽히 방지합니다.
@@ -441,9 +505,113 @@ function App() {
         setIsListening(false)
     }
 
+    // 챗 메시지 전송 (Phase 6.0)
+    const sendChatMessage = async () => {
+        if (inputValue.trim() === '') return
+        if (isSendingChat) return
+
+        if (isListening) {
+            stopListening()
+        }
+
+        if (!user) {
+            alert("대화를 나누려면 먼저 로그인을 해주세요!")
+            return
+        }
+
+        const userMessage = inputValue.trim()
+        setInputValue('')
+        setIsSendingChat(true)
+
+        try {
+            // 1. 사용자 메시지 Firestore 저장
+            await addDoc(collection(db, `users/${user.uid}/chatMessages`), {
+                text: userMessage,
+                sender: 'user',
+                createdAt: serverTimestamp()
+            })
+
+            // 2. GitHub 컨텍스트 가져오기
+            let projectContext = ''
+            if (apiKeys.githubRepo?.trim()) {
+                try {
+                    projectContext = await fetchProjectContext(apiKeys.githubRepo, apiKeys.githubToken)
+                } catch (gitErr) {
+                    console.warn('[GitHub Bridge] 컨텍스트 가져오기 실패:', gitErr.message)
+                    // 오류를 챗창에 시스템 알림 형태로 보냄
+                    await addDoc(collection(db, `users/${user.uid}/chatMessages`), {
+                        text: `⚠️ GitHub 컨텍스트를 로드하지 못했습니다: ${gitErr.message}\n(컨텍스트 정보 없이 일반 대화로 답변을 생성합니다.)`,
+                        sender: 'system',
+                        createdAt: serverTimestamp()
+                    })
+                }
+            } else {
+                // 저장소 설정이 없을 경우
+                await addDoc(collection(db, `users/${user.uid}/chatMessages`), {
+                    text: `ℹ️ 설정(⚙️)에서 GitHub Repository를 연결하면 CLAUDE.md 등 영농 프로젝트의 맥락을 참조하여 대화할 수 있습니다.`,
+                    sender: 'system',
+                    createdAt: serverTimestamp()
+                })
+            }
+
+            // 3. 대화 히스토리 포맷 구성 (Gemini에 전달용)
+            const historyForAi = chatMessages
+                .filter(msg => msg.sender === 'user' || msg.sender === 'assistant')
+                .map(msg => ({
+                    sender: msg.sender,
+                    text: msg.text
+                }))
+
+            // 4. Gemini 호출
+            const responseText = await chatWithGemini(
+                userMessage,
+                projectContext,
+                historyForAi,
+                apiKeys.gemini || null
+            )
+
+            // 5. AI 답변 Firestore 저장
+            await addDoc(collection(db, `users/${user.uid}/chatMessages`), {
+                text: responseText,
+                sender: 'assistant',
+                createdAt: serverTimestamp()
+            })
+
+        } catch (error) {
+            console.error('Chat error:', error)
+            await addDoc(collection(db, `users/${user.uid}/chatMessages`), {
+                text: `❌ 오류가 발생했습니다: ${error.message || 'Gemini 응답 생성 실패'}`,
+                sender: 'system',
+                createdAt: serverTimestamp()
+            })
+        } finally {
+            setIsSendingChat(false)
+        }
+    }
+
+    // 대화 내역 전체 삭제 (Phase 6.0)
+    const clearChatHistory = async () => {
+        if (!user) return
+        if (!window.confirm('정말로 대화 내역을 모두 지우시겠습니까?')) return
+
+        try {
+            for (const msg of chatMessages) {
+                await deleteDoc(doc(db, `users/${user.uid}/chatMessages`, msg.id))
+            }
+        } catch (e) {
+            console.error('Clear chat history failed:', e)
+        }
+    }
+
     // Todo Actions
     const addTodo = async () => {
         if (inputValue.trim() === '') return
+
+        // 챗 모드일 경우 대화 전송으로 분기 (Phase 6.0)
+        if (viewMode === 'chat') {
+            await sendChatMessage()
+            return
+        }
 
         // 음성 인식 중이면 먼저 종료 (continuous 모드와 추가 버튼 충돌 방지)
         if (isListening) {
@@ -991,7 +1159,7 @@ function App() {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleInputKeyDown}
-                    placeholder={user ? "할 일, 일정, !메모 입력... (Enter: 추가, Shift+Enter: 줄바꿈)" : "로그인 후 입력 가능합니다"}
+                    placeholder={user ? (viewMode === 'chat' ? "프로젝트 AI 비서에게 질문하기... (Enter: 전송)" : "할 일, 일정, !메모 입력... (Enter: 추가, Shift+Enter: 줄바꿈)") : "로그인 후 입력 가능합니다"}
                     id="todo-input"
                     rows={3}
                     disabled={!user}
@@ -1013,7 +1181,7 @@ function App() {
                         disabled={!user}
                         type="button"
                     >
-                        추가
+                        {viewMode === 'chat' ? '전송' : '추가'}
                     </button>
                 </div>
             </div>
@@ -1035,21 +1203,177 @@ function App() {
                         >
                             📊 표 보기
                         </button>
+                        <button 
+                            className={`btn-view-toggle ${viewMode === 'chat' ? 'active' : ''}`}
+                            onClick={() => setViewMode('chat')}
+                            type="button"
+                        >
+                            💬 프로젝트 챗
+                        </button>
                     </div>
-                    <button 
-                        className="btn-csv-export"
-                        onClick={() => exportTodosToCSV(todos)}
-                        type="button"
-                    >
-                        📥 Excel 다운로드
-                    </button>
+                    {viewMode !== 'chat' ? (
+                        <button 
+                            className="btn-csv-export"
+                            onClick={() => exportTodosToCSV(todos)}
+                            type="button"
+                        >
+                            📥 Excel 다운로드
+                        </button>
+                    ) : (
+                        <button 
+                            className="btn-clear-chat"
+                            onClick={clearChatHistory}
+                            type="button"
+                            title="대화 내역 지우기"
+                            style={{
+                                backgroundColor: '#fee2e2',
+                                color: '#ef4444',
+                                border: '1px solid #fca5a5',
+                                borderRadius: '8px',
+                                padding: '6px 12px',
+                                fontSize: '0.85rem',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fecaca' }}
+                            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2' }}
+                        >
+                            🗑️ 대화 비우기
+                        </button>
+                    )}
                 </div>
             )}
             </div>{/* /.app-fixed-top */}
 
             {/* 메모 목록만 스크롤 (#63) */}
             <div className="todo-scroll-region">
-            {viewMode === 'table' ? (
+            {viewMode === 'chat' ? (
+                <div className="chat-view-container" style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    padding: '12px',
+                    boxSizing: 'border-box'
+                }}>
+                    {/* 상단 프로젝트 상태 안내 뱃지 */}
+                    <div className="chat-project-badge" style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '12px',
+                        padding: '10px 14px',
+                        fontSize: '0.88rem',
+                        color: '#1e40af',
+                        marginBottom: '16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                    }}>
+                        <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>🔗 Connected Project:</span>
+                            <span style={{ color: '#2563eb', fontFamily: 'monospace' }}>
+                                {apiKeys.githubRepo ? apiKeys.githubRepo : '미연결 (설정에서 연결 가능)'}
+                            </span>
+                        </div>
+                        {apiKeys.githubRepo && (
+                            <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                                (CLAUDE.md 및 README.md 등 깃허브 지식 베이스가 실시간 참조되고 있습니다)
+                            </span>
+                        )}
+                    </div>
+
+                    {/* 채팅 메시지 목록 */}
+                    <div className="chat-messages-list" style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        paddingBottom: '20px'
+                    }}>
+                        {chatMessages.length === 0 ? (
+                            <div className="chat-empty-state" style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '40px 20px',
+                                color: '#9ca3af',
+                                textAlign: 'center',
+                                gap: '8px'
+                            }}>
+                                <span style={{ fontSize: '2.5rem' }}>💬</span>
+                                <strong>프로젝트 AI 대화방에 오신 것을 환영합니다!</strong>
+                                <span style={{ fontSize: '0.82rem', maxWidth: '280px' }}>
+                                    상단 입력창에 질문을 작성한 후 [전송]을 누르세요. 🎙️ 연속 마이크 음성 입력도 지원합니다.
+                                </span>
+                            </div>
+                        ) : (
+                            chatMessages.map((msg) => {
+                                const isUser = msg.sender === 'user'
+                                const isSystem = msg.sender === 'system'
+                                
+                                return (
+                                    <div
+                                        key={msg.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: isUser ? 'flex-end' : 'flex-start',
+                                            width: '100%'
+                                        }}
+                                    >
+                                        <div
+                                            className={`chat-bubble chat-bubble-${msg.sender}`}
+                                            style={{
+                                                maxWidth: '85%',
+                                                padding: '10px 14px',
+                                                borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                                                background: isUser ? 'var(--primary, #2563eb)' : (isSystem ? '#f3f4f6' : '#ffffff'),
+                                                color: isUser ? '#ffffff' : '#1f2937',
+                                                border: isUser ? 'none' : '1px solid #e5e7eb',
+                                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                                fontSize: '0.9rem',
+                                                lineHeight: '1.5',
+                                                wordBreak: 'break-word',
+                                                textAlign: 'left'
+                                            }}
+                                        >
+                                            {isSystem ? (
+                                                <div style={{ color: '#4b5563', fontSize: '0.82rem', fontStyle: 'italic' }}>
+                                                    {msg.text}
+                                                </div>
+                                            ) : (
+                                                renderMarkdown(msg.text)
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })
+                        )}
+
+                        {/* 대화 전송 중 로딩바 */}
+                        {isSendingChat && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%' }}>
+                                <div style={{
+                                    maxWidth: '85%',
+                                    padding: '10px 14px',
+                                    borderRadius: '16px 16px 16px 2px',
+                                    background: '#f3f4f6',
+                                    border: '1px solid #e5e7eb',
+                                    color: '#4b5563',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <span className="ai-chat-typing-dots">✨ AI가 영농 프로젝트 정보를 탐색하며 답변을 생성하고 있습니다...</span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+                </div>
+            ) : viewMode === 'table' ? (
                 <div className="spreadsheet-container">
                     <table className="spreadsheet-table">
                         <thead>
@@ -1430,6 +1754,26 @@ function App() {
                                 />
                             </div>
                         )}
+
+                        <div className="settings-group" style={{ borderTop: '1px solid #e5e7eb', paddingTop: '12px', marginTop: '12px' }}>
+                            <label style={{ fontWeight: 'bold', color: 'var(--primary)' }}>🔗 GitHub Repository (다중 프로젝트 브릿지)</label>
+                            <input
+                                type="text"
+                                placeholder="예: owner/repo (예: Winterbud77/Greenhouse-CropDataOps)"
+                                value={apiKeys.githubRepo || ''}
+                                onChange={e => setApiKeys({...apiKeys, githubRepo: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="settings-group">
+                            <label>GitHub Personal Access Token (PAT — Private 조회용)</label>
+                            <input
+                                type="password"
+                                placeholder="비워두면 Public 저장소만 조회 가능 (ghp_...)"
+                                value={apiKeys.githubToken || ''}
+                                onChange={e => setApiKeys({...apiKeys, githubToken: e.target.value})}
+                            />
+                        </div>
 
                         <button className="btn-primary-action" onClick={() => setShowSettingsModal(false)}>
                             저장 및 닫기

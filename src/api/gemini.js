@@ -134,3 +134,95 @@ export async function analyzeWithGemini(text, apiKey) {
 
   return analyzeWithGeminiCloud(text.trim());
 }
+
+/**
+ * BYOK: 브라우저에서 직접 Gemini Chat 호출 (Settings에 키가 있을 때만)
+ */
+async function chatWithGeminiDirect(message, context, history, apiKey) {
+  console.log('[Gemini] BYOK Chat 직접 호출, 키 시작:', apiKey.substring(0, 8) + '...');
+
+  const systemInstruction = `당신은 사용자의 깃허브 프로젝트 지식을 완벽히 이해하는 프로젝트 비서입니다.
+제공된 프로젝트 컨텍스트(CLAUDE.md 및 README.md 등)를 기반으로 사용자의 질문에 정확하고 상세히 답변하세요.
+답변은 유려하고 친절한 한글로 작성해 주세요. 핵심 전문 용어(Terminology)는 영어 원문을 쓰되, 생소하거나 어려운 용어는 괄호 안에 한글 뜻을 병기하세요.
+답변은 마크다운(Markdown) 포맷으로 가독성 있게 정리해 주세요.
+
+[프로젝트 컨텍스트]
+${context}
+`;
+
+  // 대화 히스토리 구성 (Gemini API 2.5-flash 규격에 최적화)
+  const contents = [];
+  if (history && history.length > 0) {
+    history.forEach(msg => {
+      contents.push({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }]
+      });
+    });
+  }
+  contents.push({
+    role: 'user',
+    parts: [{ text: message }]
+  });
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents,
+      systemInstruction: {
+        parts: [{ text: systemInstruction }]
+      },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      },
+    }),
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const rawBody = await response.text();
+    throw new Error(`Gemini API가 JSON이 아닌 응답을 반환했습니다 (status: ${response.status}).`);
+  }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`Gemini API 오류 (${response.status}): ${data.error?.message || '알 수 없는 오류'}`);
+  }
+
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) {
+    throw new Error('Gemini 응답이 비어있습니다.');
+  }
+
+  return rawText;
+}
+
+/**
+ * Option A: Firebase Function → 서버에 저장된 호스트 Gemini 키 사용 (Chat 전용)
+ */
+async function chatWithGeminiCloud(message, context, history) {
+  console.log('[Gemini] Cloud Function Chat 호출 (호스트 API)');
+  const callable = httpsCallable(functions, 'chatWithGeminiCloud');
+  const { data } = await callable({ message, context, history });
+  return data.text;
+}
+
+/**
+ * 프로젝트 지식 기반 챗 대화 실행
+ * @param {string} message
+ * @param {string} context
+ * @param {Array<{sender: 'user'|'assistant', text: string}>} history
+ * @param {string | null | undefined} apiKey
+ * @returns {Promise<string>}
+ */
+export async function chatWithGemini(message, context, history, apiKey) {
+  if (!message?.trim()) return '';
+
+  if (apiKey?.trim()) {
+    return chatWithGeminiDirect(message.trim(), context, history, apiKey.trim());
+  }
+
+  return chatWithGeminiCloud(message.trim(), context, history);
+}

@@ -29,22 +29,24 @@ session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 
 ### ② 백엔드 (Backend - Firebase)
 - **Firestore Database**:
-  - `users/${uid}/todos/${todoId}` 경로에 메모 카드가 저장됩니다.
-  - 주요 문서 필드: `text` (원문), `seq` (역순 일련번호), `tags` (배열), `summary` (문자열 요약), `aiProcessed` (AI 스캔 완료 여부 플래그).
+  - **할 일 목록(Todos)**: `users/${uid}/todos/${todoId}` 경로에 저장됩니다. 주요 문서 필드: `text` (원문), `seq` (역순 일련번호), `tags` (배열 요약), `summary` (문자열 요약), `aiProcessed` (AI 스캔 여부 플래그), `destinations` (내보낸 목적지들).
+  - **챗 대화 기록(Chat Messages)**: `users/${uid}/chatMessages/${msgId}` 경로에 저장되며, PWA 모바일 새로고침 시에도 대화가 휘발되지 않도록 영속 보존합니다. 주요 필드: `text` (메시지 본문), `sender` (`user` | `assistant` | `system`), `createdAt` (서버 타임스탬프).
 - **Cloud Functions (Gen 2 - asia-northeast3 서울 리전)**:
   - `analyzeMemoWithGemini`: 호스트가 등록한 호스트 전용 API Key로 Gemini API를 프록시 대리 호출하는 Callable 함수.
+  - `chatWithGeminiCloud`: 호스트 Gemini 키로 다중 프로젝트 맥락 대화를 처리하여 브라우저 CORS 제약을 회회하고 API 키 보안을 유지하는 대리 호출 Callable 함수.
   - `sendEmailViaFunctions`: Firebase Secret Manager에 등록된 `EMAIL_API_KEY` 환경변수를 로드하여 Resend/SendGrid REST API 기반으로 클라이언트의 대리 이메일 발송 요청을 처리하는 Callable 함수.
 
-### ③ 외부 채널 연동 (OAuth & Dispatch Channels)
+### ③ 외부 채널 연동 및 프로젝트 브릿지 (OAuth & Integration Bridge)
+- **GitHub Project Chat Bridge (다중 프로젝트 연결)**:
+  - **작동 원리**: 설정창에 등록된 GitHub Repository 주소(`owner/repo`)와 PAT(Personal Access Token) 정보를 이용해 깃허브 REST API로 대상 리포지토리의 `CLAUDE.md`, `README.md` 문서를 Fetch합니다.
+  - **맥락 주입 (Context Injection)**: 긁어온 마크다운 원문을 AI 시스템 프롬프트(System Prompt) 하단에 `[프로젝트 컨텍스트]`로 주입하고 사용자의 질문 및 이전 대화 history를 조립하여 Gemini API에 전송함으로써, 타 프로젝트와 AliaBot 간의 실시간 브릿지 대화를 실현합니다.
 - **Google Calendar API**:
   - `firebase.js`에 `googleProvider.addScope('https://www.googleapis.com/auth/calendar.events')`를 명시하여 로그인 시 캘린더 읽기/쓰기 권한(Scope)을 획득합니다.
   - 로그인 성공 시 획득한 구글 캘린더 `accessToken`은 브라우저 로컬 스토리지 및 `googleAccessToken` 상태 변수에 유지됩니다.
   - 메모를 내보낼 때 `insertCalendarEvent(accessToken, eventDetails)`를 통해 구글 캘린더 REST API로 연동합니다.
-- **Serverless Email (Firebase Cloud Functions)**:
-  - `functions/index.js`에 `sendEmailViaFunctions` Callable function을 정의하여 외부 API(Resend, SendGrid)를 통해 이메일을 발송합니다.
-  - 이를 위해 Firebase 프로젝트가 **Blaze (종량제 요금제)** 상태여야 외부 아웃바운드 트래픽 차단이 풀립니다.
 - **Natural Language Event Parsing (자연어 일정 파싱)**:
   - 메모가 추가되면 Gemini API가 실시간 또는 백필로 자연어를 분석하여 날짜/시간 정보를 ISO 8601 포맷으로 절대 환산하여 Firestore `metadata.parsedEvent` 필드에 캐싱해 둡니다. 이 과정에서 현재 서울 표준시(Reference Time)를 주입받아 상대 날짜 표현을 정밀 변환합니다.
+  - 이를 위해 Firebase 프로젝트가 **Blaze (종량제 요금제)** 상태여야 외부 아웃바운드 트래픽 차단이 풀립니다.
 
 ---
 

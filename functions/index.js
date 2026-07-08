@@ -256,3 +256,92 @@ exports.sendToNotionViaFunctions = onCall(
     }
   }
 );
+
+/**
+ * 지인/호스트 프로젝트 대화 중계 (서버리스 호스트 키 사용)
+ */
+exports.chatWithGeminiCloud = onCall(
+  {
+    region: FUNCTION_REGION,
+    secrets: [geminiApiKey],
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError('unauthenticated', '로그인이 필요합니다.');
+    }
+
+    assertEmailAllowed(request.auth.token.email);
+
+    const { message, context, history } = request.data || {};
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      throw new HttpsError('invalid-argument', '메시지가 필요합니다.');
+    }
+
+    const apiKey = geminiApiKey.value();
+    if (!apiKey || !apiKey.trim()) {
+      throw new HttpsError('failed-precondition', 'Gemini API 키가 서버에 설정되지 않았습니다.');
+    }
+
+    const systemInstruction = `당신은 사용자의 깃허브 프로젝트 지식을 완벽히 이해하는 프로젝트 비서입니다.
+제공된 프로젝트 컨텍스트(CLAUDE.md 및 README.md 등)를 기반으로 사용자의 질문에 정확하고 상세히 답변하세요.
+답변은 유려하고 친절한 한글로 작성해 주세요. 핵심 전문 용어(Terminology)는 영어 원문을 쓰되, 생소하거나 어려운 용어는 괄호 안에 한글 뜻을 병기하세요.
+답변은 마크다운(Markdown) 포맷으로 가독성 있게 정리해 주세요.
+
+[프로젝트 컨텍스트]
+${context || '제공된 컨텍스트가 없습니다.'}
+`;
+
+    // 대화 히스토리 구성 (Gemini API 2.5-flash 규격에 최적화)
+    const contents = [];
+    if (history && history.length > 0) {
+      history.forEach(msg => {
+        contents.push({
+          role: msg.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.text }]
+        });
+      });
+    }
+    contents.push({
+      role: 'user',
+      parts: [{ text: message }]
+    });
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          systemInstruction: {
+            parts: [{ text: systemInstruction }]
+          },
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+          },
+        }),
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const rawBody = await response.text();
+        throw new Error(`Gemini API가 JSON이 아닌 응답을 반환했습니다 (status: ${response.status}).`);
+      }
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Gemini API 오류 (${response.status}): ${data.error?.message || '알 수 없는 오류'}`);
+      }
+
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        throw new Error('Gemini 응답이 비어있습니다.');
+      }
+
+      return { text: rawText };
+    } catch (error) {
+      console.error('[chatWithGeminiCloud Error]', error);
+      throw new HttpsError('internal', error.message || '프로젝트 챗 처리 중 실패했습니다.');
+    }
+  }
+);

@@ -1477,4 +1477,129 @@ input:focus {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* ==========================================================================
+   Phase 6.0: Multi-Project Bridge - Chat View Styles
+   ========================================================================== */
+
+.chat-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 400px;
+}
+
+.chat-messages-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
+}
+
+.chat-messages-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-messages-list::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 4px;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+  animation: chatBubbleFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.chat-bubble-user {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: white !important;
+}
+
+.chat-bubble-assistant {
+  background: #ffffff !important;
+  color: var(--text-main) !important;
+  border: 1px solid rgba(229, 231, 235, 0.8) !important;
+}
+
+.chat-bubble-system {
+  background: #f3f4f6 !important;
+  color: #4b5563 !important;
+  border: 1px dashed #d1d5db !important;
+  text-align: center !important;
+  align-self: center;
+  font-size: 0.82rem !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+@keyframes chatBubbleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Typing Indicator Animation */
+.ai-chat-typing-dots {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ai-chat-typing-dots::after {
+  content: '...';
+  display: inline-block;
+  width: 12px;
+  text-align: left;
+  animation: typingDotAnim 1.4s infinite steps(4);
+}
+
+@keyframes typingDotAnim {
+  0%, 100% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* Markdown Rendering Customizations inside Chat */
+.chat-bubble strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.chat-bubble code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.85em;
+  padding: 2px 5px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.chat-bubble-user code {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+}
+
+.chat-bubble-assistant pre {
+  margin: 8px 0;
+  padding: 12px;
+  background: #1e1e2e !important; /* Catppuccin Mocha style dark syntax */
+  color: #cdd6f4 !important;
+  border-radius: 8px;
+  border: 1px solid #313244;
+  overflow-x: auto;
+}
+
+.chat-bubble-assistant pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+  font-size: 0.85rem !important;
+  border-radius: 0 !important;
 }

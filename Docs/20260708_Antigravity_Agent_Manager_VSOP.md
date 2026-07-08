@@ -83,3 +83,13 @@ session_path: "C:\Users\eugene\Projects\Work01_Anti"
    * `Open Editor` 버튼을 클릭하거나, 키보드 단축키 `Ctrl + E`를 입력합니다.
 3. **복귀 완료**:
    * 별도로 떠 있던 에이전트 매니저 창이 닫히거나 뒤로 전환되며, 본래 코드를 편집하던 **Antigravity Main Window(메인 에디터 창)**로 즉각 복귀하여 연속적인 개발을 이어가실 수 있습니다.
+
+---
+
+### [Scenario D] 세션 번호(Phase/Decimal) 세분화 및 롤오버(Rollout) 기준
+
+1. **소수점 세션 규칙 (Decimal Session Rules)**:
+   * 메이저 Phase 내부에서 개발을 진행하는 도중 대화 흐름이 매끄럽게 보존되고 있으나, 특정 버그 디버깅이나 중간 단계 징검다리가 필요할 때 세션 이름 뒤에 `Phase 6.11`, `Phase 6.13`, `Phase 6.15` 등의 **홀수 단위 소수점 번호**를 부여하여 에이전트 매니저 내 세션을 분화 관리합니다.
+2. **메이저 전환 및 롤오버 조건 (Major Rollover Criteria)**:
+   * 대화가 길어져서 **컨텍스트 크기(Context Token Limit)**가 너무 커져 응답 속도가 현저히 느려지거나, 하나의 개발 단계(예: 로컬 PC 러너 인프라 구축)가 완벽히 종결될 때는 대화를 새롭게 리셋하여 징검다리를 놓기 위해 **`Phase 6.2`**와 같이 메이저 소수점 첫째 자리 번호로 새로운 세션을 개설해 롤오버(Rollover)합니다.
+   * 메이저 롤오버 시에는 "Conversation Session을 전환하여 이어왔다"는 사실을 첫 머리에 명시하고, `Docs/NextSession_ToDo.md` 백로그를 로드하여 대화 문맥 단절을 차단합니다.

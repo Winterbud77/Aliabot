@@ -67,8 +67,13 @@ session_path: "C:\Users\eugene\.gemini\antigravity\brain"
 
 ---
 
-## 4. 📄 세션 종결 시 다큐멘테이션 규칙
-- 매 주제나 트러블슈팅이 완전히 종결되었을 때, 에이전트는 즉각 **개선사항과 원리를 반영한 VTL(Visual Tech Log)과 SOP/VSOP 문서를 Outputs/ 폴더 하위에 날짜 패턴(`YYYYMMDD_...`)으로 자동 생성하거나 기존 문서를 완전 보완**해야 합니다.
+## 4. 📄 세션 종결 시 다큐멘테이션 규칙 및 바이브코딩 백과사전(VSOP & VTL Collection) 비전
+
+1. **SOP/VTL 문서 자동 보완 규칙**: 
+   - 매 주제나 트러블슈팅이 완전히 종결되었을 때, 에이전트는 즉각 **개선사항과 원리를 반영한 VTL(Visual Tech Log)과 SOP/VSOP 문서를 Docs/ 또는 Outputs/ 폴더 하위에 날짜 패턴(`YYYYMMDD_...`)으로 자동 생성하거나 기존 문서를 완전 보완**해야 합니다.
+2. **바이브코딩 가이드북(Vibe-Coding Manual) 통합 자산화 비전**:
+   - 본 프로젝트의 최종 마일스톤 중 하나는 **"비개발자 초보자 누구나 인공지능 에이전트와 대화하며 안전하게 소프트웨어를 조율 및 개발할 수 있는 바이브코딩 가이드북(AliaBot's VSOP & VTL Collection)"**의 구축입니다.
+   - 따라서 에이전트는 개발 도중 만나는 사소한 기술적 문제(예: Open VSX 마켓플레이스의 패키지 부재, Markdown Preview Enhanced의 Mermaid 렌더링 팁, 파일 인코딩 에러 우회 삭제 프로세스 등)라도 무시하지 말고 텍스트와 도식(Mermaid)을 결합하여 VSOP/VTL 형태의 소중한 자산으로 꼼꼼히 기록하고 보존해야 합니다.
 
 ---
 

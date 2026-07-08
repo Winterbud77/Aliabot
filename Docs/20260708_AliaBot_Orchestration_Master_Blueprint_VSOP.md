@@ -113,3 +113,4 @@ graph TD
 | **다중 기기 문서 미러링** | [MultiDevice Sync VSOP](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260625_AliaBot_MultiDevice_Sync_VSOP.md) | 윈도우 전원 관리 최적화, OneDrive의 파일 락을 회피하며 로컬 프로젝트 문서를 옵시디언으로 이관하는 규칙 |
 | **스마트 동기화 스크립트** | [Obsidian Sync SOP](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/20260617_AliaBot_Phase5_Obsidian_Sync_SOP.md) | 로컬 `Docs/` 파일의 MD5 해시값을 비교하여 변경된 마크다운만 옵시디언 볼트로 실시간 백필하는 스크립트 운용 가이드 |
 | **마스터 기억 보존** | [Agent Memory Master](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/Agent_Memory.md) | 미래의 후속 AI 에이전트가 코딩 작업에 착수할 때 최우선으로 준수해야 하는 AliaBot 아키텍처 및 철학 안내 지침 |
+| **자율 문서 편찬 스킬** | [Doc Gen Skill](file:///c:/Users/eugene/Projects/Work01_Anti/Docs/VSOP_VTL_Generate_Skill.md) | 세션을 스스로 추론/복기하여 VTL 및 VSOP 문서를 자율 컴파일해내는 AI 전용 스킬 정의서 |

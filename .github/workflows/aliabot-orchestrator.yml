@@ -1,0 +1,39 @@
+name: AliaBot Multi-Project Automation Orchestrator
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Docs/Instruction_Inbox.md'
+
+jobs:
+  orchestrate-analysis:
+    name: Run Crop Data Auto Analysis
+    runs-on: self-hosted
+
+    steps:
+      # 1. 깃허브 원격 코드에서 최신 지시사항과 분석 소스 가져오기
+      - name: Checkout Source Code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      # 2. 로컬 파이썬 및 Claude API를 기동하여 자율 연산 수행
+      - name: Execute Automated Crop Analysis Engine
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "GitHub Actions Runner: 모바일 지시사항 감지 완료. 자율 연산을 시작합니다."
+          python src/run_auto_agent.py
+
+      # 3. 연산 후 새롭게 생성된 결과 보고서(Outputs) 및 캐시를 깃허브에 커밋 & 푸시
+      - name: Commit and Push Output Changes
+        run: |
+          git config --global user.name "AliaBot Orchestrator"
+          git config --global user.email "aliabot-orchestrator@aliabot.local"
+          git add Outputs/ Docs/
+          # 변경사항이 있을 때만 커밋 수행 (에러 방지)
+          git diff-index --quiet HEAD || git commit -m "Auto-Run: Crop analysis result updated by AliaBot Executor"
+          git push origin master
